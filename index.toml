@@ -1,0 +1,40 @@
+[[mods]]
+name = "Athena"
+modrinth_id = "b1ZV3DIJ"
+version = "53014ceff1e10085609c16adbe246df51113bfe9"
+
+[[mods]]
+name = "Do a Barrel Roll"
+curseforge_id = 663658
+version = "5373095"
+
+[[mods]]
+name = "animatica"
+modrinth_id = "PRN43VSY"
+version = "3bcb19c759f313e69d3f7848b03c48f15167b88d"
+pinned = true
+
+[[mods]]
+name = "fabric api"
+modrinth_id = "P7dR8mSH"
+version = "038ebcc315b5cf18c18f78f2447895dcb2ea9bac"
+
+[[mods]]
+name = "indium"
+modrinth_id = "Orvt0mRa"
+version = "b24233f29c0ce4802c61ea8998e01e6e4580ae60"
+
+[[mods]]
+name = "lithium"
+modrinth_id = "gvQqBUqZ"
+version = "8f4642147e60827f728badac7a819d1a9f3b25d5"
+
+[[mods]]
+name = "sodium"
+modrinth_id = "AANobbMI"
+version = "bdd6b8ac84b46ae56a3bbb761ce430c48e42e00d"
+
+[[mods]]
+name = "supplementaries"
+modrinth_id = "fFEIiSDQ"
+version = "cf8e5bb457b0eaa0c3715ba74b4eedd945122f46"
