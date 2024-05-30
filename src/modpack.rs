@@ -1,10 +1,10 @@
 use std::{env, fs, path::PathBuf};
 
-use crate::{structs::{CurseforgeMod, Index, Mod, ModByPlatform, ModLoader, Modpack, Modrinthmod}, Error, Result};
+use crate::{structs::{CurseforgeMod, Index, Mod, ModByPlatform, ModLoader, Modpack, ModpackAbout, ModpackVersions, Modrinthmod}, Error, Result};
 
 impl Modpack {
-    pub fn new(name: String, author: String, game_version: String, mod_loader: ModLoader) -> Self {
-        Modpack { name, author, game_version, mod_loader }
+    pub fn new(name: String, authors: Vec<String>, description: Option<String>, minecraft_version: String, mod_loader: ModLoader, loader_version: String) -> Self {
+        Modpack { about: ModpackAbout { name, authors, description }, versions: ModpackVersions { minecraft: minecraft_version, mod_loader, loader_version } }
     }
 
     fn path() -> PathBuf {

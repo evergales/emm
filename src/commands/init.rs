@@ -11,15 +11,22 @@ pub async fn init() -> Result<()> {
     let modpack_name: String = Input::new()
         .with_prompt("Name your modpack")
         .interact_text()?;
-
-    let modpack_author: String = Input::new()
-        .with_prompt("Who is the modpack's author")
-        .interact_text()?;
     
     let modpack_game_version = pick_game_version().await?;
     let modpack_loader = pick_loader().await?;
 
-    Modpack::write(Modpack::new(modpack_name, modpack_author,  modpack_game_version, modpack_loader))?;
+    /*
+    todo: properly get mod_loader versions!!
+    get from maven xml files!
+    https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml
+    https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-loader/maven-metadata.xml
+
+    neoforge & forge have specific loaders per mc version, needs to be parsed properly
+    https://maven.neoforged.net/releases/net/neoforged/forge/maven-metadata.xml
+    https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.xml
+    */
+
+    Modpack::write(Modpack::new(modpack_name, vec!["you!".to_string()],  Some("my awesome modpack!".to_string()), modpack_game_version, modpack_loader, String::new()))?;
 
     Ok(())
 }

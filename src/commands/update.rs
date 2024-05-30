@@ -22,8 +22,8 @@ pub async fn update() -> Result<()> {
     let latest_mr_versions = MODRINTH.latest_versions_from_hashes(
             index_mr_mods.into_iter().map(|m| m.version).collect(),
             LatestVersionBody {
-                loaders: vec![modpack.mod_loader.to_string().to_lowercase()],
-                game_versions: vec![modpack.game_version.clone()],
+                loaders: vec![modpack.versions.mod_loader.to_string().to_lowercase()],
+                game_versions: vec![modpack.versions.minecraft.clone()],
             },
         )
         .await?;
@@ -40,8 +40,8 @@ pub async fn update() -> Result<()> {
 
             let compatibles = files.into_iter().filter(|f| 
                     f.is_available
-                    && f.game_versions.contains(&modpack.mod_loader.to_string())
-                    && f.game_versions.contains(&modpack.game_version)
+                    && f.game_versions.contains(&modpack.versions.mod_loader.to_string())
+                    && f.game_versions.contains(&modpack.versions.minecraft)
                 ).collect::<Vec<File>>();
     
             let latest = compatibles.into_iter().max_by_key(|f| f.file_date).unwrap();

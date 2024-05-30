@@ -25,8 +25,8 @@ pub async fn add_mod(mods: Vec<String>) -> Result<()> {
     
             let compatibles = files.into_iter().filter(|f| 
                     f.is_available
-                    && f.game_versions.contains(&modpack.mod_loader.to_string())
-                    && f.game_versions.contains(&modpack.game_version)
+                    && f.game_versions.contains(&modpack.versions.mod_loader.to_string())
+                    && f.game_versions.contains(&modpack.versions.minecraft)
                 ).collect::<Vec<File>>();
             
             if compatibles.is_empty() {
@@ -46,8 +46,8 @@ pub async fn add_mod(mods: Vec<String>) -> Result<()> {
 
         let compatible_versions = MODRINTH.list_versions_filtered(
                 &mr_mod.id,
-                Some(&[&modpack.mod_loader.to_string().to_lowercase()]),
-                Some(&[&modpack.game_version]),
+                Some(&[&modpack.versions.mod_loader.to_string().to_lowercase()]),
+                Some(&[&modpack.versions.minecraft]),
                 None,
             )
             .await?;
@@ -81,8 +81,8 @@ async fn get_project_with_search(id: &str, modpack: &Modpack) -> Result<Option<P
             &ferinth::structures::search::Sort::Relevance,
             vec![vec![
                 Facet::ProjectType(ProjectType::Mod),
-                Facet::Categories(modpack.mod_loader.to_string()),
-                Facet::Versions(modpack.game_version.to_owned())
+                Facet::Categories(modpack.versions.mod_loader.to_string()),
+                Facet::Versions(modpack.versions.minecraft.to_owned())
             ]],
         )
         .await?;
