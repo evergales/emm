@@ -3,10 +3,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Modpack {
+    pub about: ModpackAbout,
+    pub versions: ModpackVersions,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModpackAbout {
     pub name: String,
-    pub author: String,
-    pub game_version: String,
+    pub authors: Vec<String>,
+    pub description: Option<String>
+    // maybe resource links here?
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModpackVersions {
+    pub minecraft: String,
     pub mod_loader: ModLoader,
+    pub loader_version: String
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
