@@ -4,7 +4,7 @@ use furse::structures::file_structs::File;
 use tokio::task::JoinSet;
 
 use crate::{
-    modpack::seperate_mods_by_platform, structs::{Index, Mod, Modpack}, Result, CURSEFORGE, MODRINTH
+    util::seperate_mods_by_platform, structs::{Index, Mod, Modpack}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn update() -> Result<()> {
