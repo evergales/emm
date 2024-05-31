@@ -1,6 +1,6 @@
 use dialoguer::{Input, Select};
 
-use crate::{structs::{ModLoader, Modpack}, Result, MODRINTH};
+use crate::{structs::{ModLoader, Modpack}, util::get_latest_loader_version, Result, MODRINTH};
 
 pub async fn init() -> Result<()> {
     if Modpack::read().is_ok() {
@@ -15,18 +15,9 @@ pub async fn init() -> Result<()> {
     let modpack_game_version = pick_game_version().await?;
     let modpack_loader = pick_loader().await?;
 
-    /*
-    todo: properly get mod_loader versions!!
-    get from maven xml files!
-    https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml
-    https://maven.quiltmc.org/repository/release/org/quiltmc/quilt-loader/maven-metadata.xml
+    let loader_version = get_latest_loader_version(&modpack_loader, &modpack_game_version).await?;
 
-    neoforge & forge have specific loaders per mc version, needs to be parsed properly
-    https://maven.neoforged.net/releases/net/neoforged/forge/maven-metadata.xml
-    https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.xml
-    */
-
-    Modpack::write(Modpack::new(modpack_name, vec!["you!".to_string()],  Some("my awesome modpack!".to_string()), modpack_game_version, modpack_loader, String::new()))?;
+    Modpack::write(Modpack::new(modpack_name, vec!["you!".to_string()],  Some("my awesome modpack!".to_string()), modpack_game_version, modpack_loader, loader_version))?;
 
     Ok(())
 }

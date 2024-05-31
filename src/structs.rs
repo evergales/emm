@@ -1,10 +1,34 @@
-use std::fmt::Display;
+use std::{env, fmt::Display, fs, path::PathBuf};
 use serde::{Deserialize, Serialize};
+use crate::{Error, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Modpack {
     pub about: ModpackAbout,
     pub versions: ModpackVersions,
+}
+
+impl Modpack {
+    pub fn new(name: String, authors: Vec<String>, description: Option<String>, minecraft_version: String, mod_loader: ModLoader, loader_version: String) -> Self {
+        Modpack { about: ModpackAbout { name, authors, description }, versions: ModpackVersions { minecraft: minecraft_version, mod_loader, loader_version } }
+    }
+
+    fn path() -> PathBuf {
+        env::current_dir().unwrap().join("mcpack.toml")
+    }
+
+    pub fn read() -> Result<Self> {
+        if !Self::path().is_file() { return Err(Error::Uninitialized); }
+        let packfile_str = &fs::read_to_string(Self::path()).map_err(|_| Error::Uninitialized)?;
+        let toml_str = toml::from_str(packfile_str).map_err(|err| Error::Parse(format!("Error while parsing config to toml {err}")))?;
+        Ok(toml_str)
+    }
+
+    pub fn write(modpack: Self) -> Result<()> {
+        let str = toml::to_string(&modpack).unwrap();
+        fs::write(Self::path(), str)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -26,7 +50,31 @@ pub struct ModpackVersions {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Index {
     #[serde(default)]
-    pub(crate) mods: Vec<Mod>
+    pub mods: Vec<Mod>
+}
+
+impl Index {
+    fn path() -> PathBuf {
+        env::current_dir().unwrap().join("index.toml")
+    }
+
+    pub fn read() -> Result<Self> {
+        if !Modpack::path().is_file() {
+            return Err(Error::Uninitialized);
+        }
+        if !Self::path().is_file() {
+            Self::write(&Index { mods: Vec::new() })?;
+        }
+        let index_str = &fs::read_to_string(Self::path()).map_err(|_| Error::Uninitialized)?;
+        let toml_str = toml::from_str(index_str).map_err(|err| Error::Parse(format!("Error while parsing index to toml {err}")))?;
+        Ok(toml_str)
+    }
+
+    pub fn write(index: &Self) -> Result<()> {
+        let str = toml::to_string(&index).unwrap();
+        fs::write(Self::path(), str)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -36,6 +84,32 @@ pub struct Mod {
     pub curseforge_id: Option<i32>,
     pub version: String, // curseforge version ids or modrinth file hashes
     pub pinned: Option<bool>
+}
+
+impl Mod {
+    pub fn new(name: String, modrinth_id: Option<String>, curseforge_id: Option<i32>, version: String, pinned: Option<bool>) -> Self {
+        Mod { name, modrinth_id, curseforge_id, version, pinned }
+    }
+
+    pub fn seperate_by_platform(self) -> Result<ModByPlatform> {
+        if self.modrinth_id.is_some() {
+            return Ok(ModByPlatform::ModrinthMod(Modrinthmod {
+                name: self.name,
+                id: self.modrinth_id.unwrap(),
+                version: self.version
+            }));
+        };
+
+        if self.curseforge_id.is_some() {
+            return Ok(ModByPlatform::CurseforgeMod(CurseforgeMod { 
+                name: self.name.to_owned(),
+                id: self.curseforge_id.unwrap(),
+                version: self.version.parse::<i32>().map_err(|_| Error::Parse(format!("Could not parse cf mod version to int {:#?}", self)))?
+            }));
+        };
+
+        Err(Error::Parse(format!("Something went wrong while trying to parse {:#?}\nas platform specific", self)))
+    }
 }
 
 

@@ -64,7 +64,24 @@ pub async fn add_mod(mods: Vec<String>) -> Result<()> {
         to_add.push(Mod::new(mr_mod.title, Some(mr_mod.id), None, primary_file.hashes.sha1, None))
     }
 
-    Index::add_mods(to_add)?;
+    add_mods(to_add)?;
+    Ok(())
+}
+
+pub fn add_mods(mods: Vec<Mod>) -> Result<()> {
+    let mut index = Index::read()?;
+    for m in mods {
+        // checking the name as well so you cant add the same mod from both modrinth or curseforge
+        if index.mods.iter().any(|idx_mod| idx_mod.name == m.name || *idx_mod == m) {
+            println!("{} is already in the modpack!", m.name);
+            continue;
+        }
+        println!("Adding {}!", m.name);
+        index.mods.push(m)
+    }
+
+    index.mods.sort_by_key(|m| m.name.to_owned());
+    Index::write(&index)?;
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 mod structs;
 mod commands;
-mod modpack;
+mod util;
 
 use std::env;
 
@@ -34,7 +34,8 @@ pub enum Error {
     Curseforge(#[from] furse::Error),
     Dialoguer(#[from] dialoguer::Error),
     Io(#[from] std::io::Error),
-    JoinError(#[from] tokio::task::JoinError)
+    JoinError(#[from] tokio::task::JoinError),
+    Reqwest(#[from] reqwest::Error)
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
