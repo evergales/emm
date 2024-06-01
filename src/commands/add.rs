@@ -110,18 +110,25 @@ async fn get_project_with_search(id: &str, modpack: &Modpack) -> Result<Option<P
         }
 
         let search_titles: Vec<&String> = search_res.hits.iter().map(|hit| &hit.title).collect();
-        
-        let chosen = Select::new()
-            .with_prompt(format!("suggestions for '{id}'"))
-            .items(&search_titles)
-            .interact_opt()?;
-        
-        // optional select will return none if exited
-        if chosen.is_none() {
-            return Ok(None);
-        }
+
+        // if inputed string matches a search result title exactly choose that one
+        let chosen = if let Some(exact_match) = search_titles.iter().position(|t| t.to_lowercase() == id.to_lowercase()) {
+            exact_match
+        } else {
+            let opt_chosen = Select::new()
+                .with_prompt(format!("suggestions for '{id}'"))
+                .items(&search_titles)
+                .interact_opt()?;
+
+            // selecting a suggestion is optional, return Ok(None) if none are selected
+            if let Some(chosen) = opt_chosen {
+                chosen
+            } else {
+                return Ok(None);
+            }
+        };
             
-        let chosen_project = MODRINTH.get_project(&search_res.hits[chosen.unwrap()].project_id).await?;
+        let chosen_project = MODRINTH.get_project(&search_res.hits[chosen].project_id).await?;
         Ok(Some(chosen_project))
     }
 }
