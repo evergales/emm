@@ -152,3 +152,27 @@ impl Display for ModLoader {
         })
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MavenMetadata {
+    pub group_id: String,
+    pub artifact_id: String,
+    pub versioning: MavenVersioning
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct MavenVersioning {
+    pub release: String,
+    pub latest: String,
+    pub last_updated: String,
+    pub versions: MavenVersion
+}
+
+// to be honest I have 0 clue why it works like this
+// also calling it with metadata.versioning.versions.version bwuh
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MavenVersion {
+    pub version: Vec<String>
+}

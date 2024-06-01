@@ -1,30 +1,4 @@
-use serde::{Deserialize, Serialize};
-
-use crate::{structs::{CurseforgeMod, Mod, ModByPlatform, ModLoader, Modrinthmod}, Error, Result};
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct MavenMetadata {
-    pub group_id: String,
-    pub artifact_id: String,
-    pub versioning: MavenVersioning
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct MavenVersioning {
-    pub release: String,
-    pub latest: String,
-    pub last_updated: String,
-    pub versions: MavenVersion
-}
-
-// to be honest I have 0 clue why it works like this
-// also calling it with metadata.versioning.versions.version bwuh
-#[derive(Serialize, Deserialize, Debug)]
-pub struct MavenVersion {
-    pub version: Vec<String>
-}
+use crate::{structs::{CurseforgeMod, MavenMetadata, Mod, ModByPlatform, ModLoader, Modrinthmod}, Error, Result};
 
 impl ModLoader {
     pub async fn get_version_maven(&self) -> Result<MavenMetadata> {
@@ -44,13 +18,17 @@ impl ModLoader {
 pub async fn get_latest_loader_version(loader: &ModLoader, mc_version: &String) -> Result<String> {
     let metadata = loader.get_version_maven().await?;
 
+    // todo: make beta versions of Quilt and NeoForge accessible if the user wants them
+
     let latest_version = match loader {
+        // just get latest on fabric
         ModLoader::Fabric => metadata.versioning.latest,
         ModLoader::Quilt => { 
-            let releases = metadata.versioning.versions.version.into_iter().filter(|v| !v.contains("beta")).collect::<Vec<String>>();
+            let releases: Vec<String> = metadata.versioning.versions.version.into_iter().filter(|v| !v.contains("beta")).collect();
             releases.last().unwrap().to_owned()
         },
         ModLoader::Forge => {
+            // versions are formatted "{mc_version}-{forge_version}"
             let compatible: Vec<String> = metadata.versioning.versions.version.into_iter().filter(|v| v.starts_with(mc_version)).collect();
             if compatible.is_empty() { return Err(Error::Other("there are no MinecraftForge loader versions for your minecraft version available".to_string())) }
             compatible[0].strip_prefix(&format!("{mc_version}-")).unwrap().to_owned()
@@ -58,6 +36,8 @@ pub async fn get_latest_loader_version(loader: &ModLoader, mc_version: &String) 
         ModLoader::NeoForge => {
             // this doesnt allow for 1.20.1 versions because they're on a whole different maven
             // and they're "legacy" and aaaaaaaaaaaaaa
+
+            // versions are formatted "{mc_version without major (withour '1.')}.{neoforge_version}"
             let version = mc_version.strip_prefix("1.").unwrap(); // not really sure about this but it works
             let compatible: Vec<String> = metadata.versioning.versions.version.into_iter().filter(|v| v.starts_with(version)).collect();
             if compatible.is_empty() { return Err(Error::Other("there are no NeoForge loader versions for your minecraft version available".to_string())) }
