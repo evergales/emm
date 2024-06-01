@@ -4,7 +4,7 @@ use furse::structures::file_structs::File;
 
 use crate::{structs::{Index, Mod, Modpack}, Error, Result, CURSEFORGE, MODRINTH};
 
-pub async fn add_mod(mods: Vec<String>) -> Result<()> {
+pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: bool) -> Result<()> {
     let modpack = Modpack::read()?;
 
     let mut to_add: Vec<Mod> = Vec::new();
@@ -25,8 +25,8 @@ pub async fn add_mod(mods: Vec<String>) -> Result<()> {
     
             let compatibles = files.into_iter().filter(|f| 
                     f.is_available
-                    && f.game_versions.contains(&modpack.versions.mod_loader.to_string())
-                    && f.game_versions.contains(&modpack.versions.minecraft)
+                    && if !ignore_loader { f.game_versions.contains(&modpack.versions.mod_loader.to_string()) } else { true }
+                    && if !ignore_version { f.game_versions.contains(&modpack.versions.minecraft) } else { true }
                 ).collect::<Vec<File>>();
             
             if compatibles.is_empty() {
@@ -39,15 +39,19 @@ pub async fn add_mod(mods: Vec<String>) -> Result<()> {
         }
 
         // handle modrinth mods
-        let mr_mod = match get_project_with_search(&id, &modpack).await? {
+        let mr_mod = match get_project_with_search(&id, &modpack, ignore_version, ignore_loader).await? {
             Some(m) => m,
             None => continue,
         };
 
+        // I honestly dont know how &[&str] works so-
+        let loader_slice = &[&*modpack.versions.mod_loader.to_string().to_lowercase()];
+        let version_slice = &[&*modpack.versions.minecraft];
+
         let compatible_versions = MODRINTH.list_versions_filtered(
                 &mr_mod.id,
-                Some(&[&modpack.versions.mod_loader.to_string().to_lowercase()]),
-                Some(&[&modpack.versions.minecraft]),
+                if !ignore_loader { Some(loader_slice) } else { None },
+                if !ignore_version { Some(version_slice) } else { None },
                 None,
             )
             .await?;
@@ -87,22 +91,26 @@ pub fn add_mods(mods: Vec<Mod>) -> Result<()> {
 
 // try to get a modrinth project from id/slug string
 // & suggest search results if the id/slug cant be found
-async fn get_project_with_search(id: &str, modpack: &Modpack) -> Result<Option<Project>> {
+async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bool, ignore_loader: bool) -> Result<Option<Project>> {
     if let Ok(project) = valid_id_slug_helper(id).await  {
         Ok(Some(project))
     }
     else {
-        let search_res = MODRINTH
-        .search(
+        let mut search_facets = Vec::new();
+        search_facets.push(Facet::ProjectType(ProjectType::Mod));
+
+        if !ignore_version {
+            search_facets.push(Facet::Categories(modpack.versions.minecraft.to_owned()))
+        }
+        if !ignore_loader {
+            search_facets.push(Facet::Categories(modpack.versions.mod_loader.to_string()))
+        }
+
+        let search_res = MODRINTH.search(
             id,
             &ferinth::structures::search::Sort::Relevance,
-            vec![vec![
-                Facet::ProjectType(ProjectType::Mod),
-                Facet::Categories(modpack.versions.mod_loader.to_string()),
-                Facet::Versions(modpack.versions.minecraft.to_owned())
-            ]],
-        )
-        .await?;
+            vec![search_facets]
+        ).await?;
 
         if search_res.hits.is_empty() {
             println!("Searching for '{id}' returned nothing");
@@ -115,17 +123,13 @@ async fn get_project_with_search(id: &str, modpack: &Modpack) -> Result<Option<P
         let chosen = if let Some(exact_match) = search_titles.iter().position(|t| t.to_lowercase() == id.to_lowercase()) {
             exact_match
         } else {
-            let opt_chosen = Select::new()
+            match Select::new()
                 .with_prompt(format!("suggestions for '{id}'"))
                 .items(&search_titles)
-                .interact_opt()?;
-
-            // selecting a suggestion is optional, return Ok(None) if none are selected
-            if let Some(chosen) = opt_chosen {
-                chosen
-            } else {
-                return Ok(None);
-            }
+                .interact_opt()? {
+                    Some(choice) => choice,
+                    None => return Ok(None), // selecting a suggestion is optional, return Ok(None) if none are selected
+                }
         };
             
         let chosen_project = MODRINTH.get_project(&search_res.hits[chosen].project_id).await?;

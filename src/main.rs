@@ -53,7 +53,7 @@ async fn main() {
 
     if let Err(err) = match args.command {
         Commands::Init => commands::init::init().await,
-        Commands::Add { mods } => commands::add::add_mod(mods).await,
+        Commands::Add { mods, ignore_version, ignore_loader } => commands::add::add_mod(mods, ignore_version, ignore_loader).await,
         Commands::Remove { mods } => commands::remove::remove_mod(mods).await,
         Commands::Pin { m } => commands::pin::pin(m).await,
         Commands::Unpin { m } => commands::unpin::unpin(m).await,
