@@ -22,7 +22,7 @@ pub async fn init() -> Result<()> {
     Ok(())
 }
 
-async fn pick_game_version() -> Result<String> {
+pub async fn pick_game_version() -> Result<String> {
     let versions: Vec<String> = MODRINTH
         .list_game_versions()
         .await?

@@ -44,8 +44,10 @@ pub async fn update() -> Result<()> {
                     && f.game_versions.contains(&modpack.versions.minecraft)
                 ).collect::<Vec<File>>();
     
-            let latest = compatibles.into_iter().max_by_key(|f| f.file_date).unwrap();
-            collected_cf_versions.lock().unwrap().push(latest);
+            let latest = compatibles.into_iter().max_by_key(|f| f.file_date);
+            if let Some(latest) = latest {
+                collected_cf_versions.lock().unwrap().push(latest);
+            }
             
             Ok(())
         };
@@ -70,8 +72,9 @@ pub async fn update() -> Result<()> {
             }
         }
         if i.curseforge_id.is_some() && !latest_cf_versions.iter().any(|v| v.id == i.version.parse::<i32>().unwrap()) {
-            let new_version = latest_cf_versions.iter().find(|v| v.mod_id == i.curseforge_id.unwrap()).unwrap().id;
-            return Some((i, new_version.to_string()));
+            if let Some(new_version) = latest_cf_versions.iter().find(|v| v.mod_id == i.curseforge_id.unwrap()) {
+                return Some((i, new_version.id.to_string()));
+            }
         }
 
         None
