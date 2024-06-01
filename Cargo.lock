@@ -431,6 +431,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "emm"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dialoguer",
+ "ferinth",
+ "furse",
+ "lazy_static",
+ "mrpack",
+ "reqwest",
+ "serde",
+ "serde-xml-rs",
+ "thiserror",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "encode_unicode"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -923,24 +941,6 @@ checksum = "297e814c836ae64db86b36cf2a557ba54368d03f6afcd7d947c266692f71115e"
 dependencies = [
  "byteorder",
  "crc",
-]
-
-[[package]]
-name = "mcpack"
-version = "0.1.0"
-dependencies = [
- "clap",
- "dialoguer",
- "ferinth",
- "furse",
- "lazy_static",
- "mrpack",
- "reqwest",
- "serde",
- "serde-xml-rs",
- "thiserror",
- "tokio",
- "toml",
 ]
 
 [[package]]

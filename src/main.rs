@@ -24,7 +24,7 @@ pub enum Error {
     #[error("Error while parsing, {0}")]
     Parse(String),
 
-    #[error("The folder you're in doesnt have a modpack, create one with mcpack init")]
+    #[error("The folder you're in doesnt have a modpack, create one with emm init")]
     Uninitialized,
 
     #[error("{0}")]

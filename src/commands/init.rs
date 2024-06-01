@@ -4,7 +4,7 @@ use crate::{structs::{ModLoader, Modpack}, util::get_latest_loader_version, Resu
 
 pub async fn init() -> Result<()> {
     if Modpack::read().is_ok() {
-        println!("This folder already has a modpack! \nrun `mcpack help` for help");
+        println!("This folder already has a modpack! \nrun `emm help` for help");
         return Ok(());
     }
 
