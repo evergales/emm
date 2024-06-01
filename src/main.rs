@@ -8,7 +8,7 @@ use ferinth::Ferinth;
 use furse::Furse;
 use lazy_static::lazy_static;
 use clap::Parser;
-use commands::Commands;
+use commands::{migrate, Commands};
 
 lazy_static! {
     pub static ref MODRINTH: Ferinth = Ferinth::new("eg-mc", Some("0.1.0"), None, None).unwrap();
@@ -57,7 +57,11 @@ async fn main() {
         Commands::Remove { mods } => commands::remove::remove_mod(mods).await,
         Commands::Pin { m } => commands::pin::pin(m).await,
         Commands::Unpin { m } => commands::unpin::unpin(m).await,
-        Commands::Update => commands::update::update().await
+        Commands::Update => commands::update::update().await,
+        Commands::Migrate { subcommand } => match subcommand {
+            migrate::Commands::Loader => migrate::loader::migrate_loader().await,
+            migrate::Commands::Minecraft => migrate::minecraft::migrate_minecraft().await,
+        }
     } {
         eprintln!("{}", err)
     }

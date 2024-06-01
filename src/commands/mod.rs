@@ -4,6 +4,7 @@ pub mod remove;
 pub mod update;
 pub mod pin;
 pub mod unpin;
+pub mod migrate;
 
 use clap::Subcommand;
 
@@ -38,6 +39,10 @@ pub enum Commands {
         mods: Vec<String>
     },
 
+    /// Update all mods in this modpack
+    #[command(alias = "up")]
+    Update,
+
     // Pin a mod to exclude it from updates
     Pin {
         #[arg(name="mod")]
@@ -52,9 +57,12 @@ pub enum Commands {
         m: String
     },
 
-    /// Update all mods in this modpack
-    #[command(alias = "up")]
-    Update
+    
+    Migrate {
+        #[command(subcommand)]
+        subcommand: migrate::Commands
+    }
+
 }
 
 // determine if a mod matches a name or id 
