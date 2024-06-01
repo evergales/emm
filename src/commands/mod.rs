@@ -20,6 +20,14 @@ pub enum Commands {
         /// List of mod ids/slugs or names you want to search
         #[arg(required = true)]
         mods: Vec<String>,
+
+        /// ignore minecraft version when checking compatability
+        #[arg(long, short = 'V')]
+        ignore_version: bool,
+
+        /// ignore mod loader when checking compatability
+        #[arg(long, short = 'L')]
+        ignore_loader: bool
     },
 
     /// Remove a mod from the current profile (rm/r)
