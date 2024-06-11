@@ -1,4 +1,5 @@
 use std::{env, fmt::Display, fs, path::PathBuf};
+use ferinth::structures::version;
 use serde::{Deserialize, Serialize};
 use crate::{Error, Result};
 
@@ -9,8 +10,8 @@ pub struct Modpack {
 }
 
 impl Modpack {
-    pub fn new(name: String, authors: Vec<String>, description: Option<String>, minecraft_version: String, mod_loader: ModLoader, loader_version: String) -> Self {
-        Modpack { about: ModpackAbout { name, authors, description }, versions: ModpackVersions { minecraft: minecraft_version, mod_loader, loader_version } }
+    pub fn new(name: String, authors: Vec<String>, description: Option<String>, version: String, minecraft_version: String, mod_loader: ModLoader, loader_version: String) -> Self {
+        Modpack { about: ModpackAbout { name, authors, description, version }, versions: ModpackVersions { minecraft: minecraft_version, mod_loader, loader_version } }
     }
 
     fn path() -> PathBuf {
@@ -35,7 +36,8 @@ impl Modpack {
 pub struct ModpackAbout {
     pub name: String,
     pub authors: Vec<String>,
-    pub description: Option<String>
+    pub description: Option<String>,
+    pub version: String
     // maybe resource links here?
 }
 

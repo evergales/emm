@@ -16,11 +16,12 @@ pub struct Metadata {
     /// Human-readable name of the modpack.
     pub name: String,
     /// A short description of this modpack.
+    #[serde(skip_serializing_if="Option::is_none")]
     pub summary: Option<String>,
     /// Contains a list of files for the modpack that needs to be downloaded.
     pub files: Vec<File>,
     /// This object contains a list of IDs and version numbers that launchers will use in order to know what to install.
-    pub dependencies: HashMap<Dependency, String>
+    pub dependencies: HashMap<PackDependency, String>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,6 +35,7 @@ pub struct File {
     pub hashes: FileHashes,
     /// For files that only exist on a specific environment, this field allows that to be specified.
     /// This uses the Modrinth client/server type specifications.
+    #[serde(skip_serializing_if="Option::is_none")]
     pub env: Option<FileEnv>,
     /// An array containing HTTPS URLs where this file may be downloaded.
     /// When uploading to Modrinth, the pack is validated so that only URIs from the following domains are allowed:
@@ -45,7 +47,7 @@ pub struct File {
     /// ```
     pub downloads: Vec<Url>,
     /// An integer containing the size of the file, in bytes.
-    pub file_size: i32
+    pub file_size: usize
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -56,21 +58,22 @@ pub struct FileHashes {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileEnv {
-    pub client: ProjectEnvSupportRange,
-    pub server: ProjectEnvSupportRange
+    pub client: EnvSideType,
+    pub server: EnvSideType
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum ProjectEnvSupportRange {
+#[serde(rename_all = "kebab-case")]
+pub enum EnvSideType {
     Required,
     Optional,
     Unsupported,
+    Unknown
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
-pub enum Dependency {
+pub enum PackDependency {
     Minecraft,
     Forge,
     NeoForge,
@@ -78,8 +81,9 @@ pub enum Dependency {
     QuiltLoader
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum Game {
+    #[default]
     Minecraft,
 }

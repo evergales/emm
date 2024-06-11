@@ -5,6 +5,7 @@ pub mod update;
 pub mod pin;
 pub mod unpin;
 pub mod migrate;
+pub mod export;
 
 use clap::Subcommand;
 
@@ -57,7 +58,13 @@ pub enum Commands {
         m: String
     },
 
-    
+    // Export your modpack
+    Export {
+        #[command(subcommand)]
+        subcommand: export::Commands
+    },
+
+    // Migrate your modpack to a new minecraft or mod loader version
     Migrate {
         #[command(subcommand)]
         subcommand: migrate::Commands

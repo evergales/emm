@@ -17,7 +17,7 @@ pub async fn init() -> Result<()> {
 
     let loader_version = get_latest_loader_version(&modpack_loader, &modpack_game_version).await?;
 
-    Modpack::write(Modpack::new(modpack_name, vec!["you!".to_string()],  Some("my awesome modpack!".to_string()), modpack_game_version, modpack_loader, loader_version))?;
+    Modpack::write(Modpack::new(modpack_name, vec!["you!".to_string()], Some("my awesome modpack!".to_string()), "0.1.0".into(), modpack_game_version, modpack_loader, loader_version))?;
 
     Ok(())
 }

@@ -4,7 +4,7 @@ use dialoguer::Confirm;
 use tokio::task::JoinSet;
 
 use crate::{
-    commands::{init::pick_game_version, update::update}, structs::{Index, Modpack}, util::{get_latest_loader_version, join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
+    commands::init::pick_game_version, structs::{Index, Modpack}, util::{get_latest_loader_version, join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn migrate_minecraft() -> Result<()> {

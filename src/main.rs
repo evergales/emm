@@ -8,7 +8,7 @@ use ferinth::Ferinth;
 use furse::Furse;
 use lazy_static::lazy_static;
 use clap::Parser;
-use commands::{migrate, Commands};
+use commands::{export, migrate, Commands};
 
 lazy_static! {
     pub static ref MODRINTH: Ferinth = Ferinth::new("eg-mc", Some("0.1.0"), None, None).unwrap();
@@ -61,6 +61,9 @@ async fn main() {
         Commands::Migrate { subcommand } => match subcommand {
             migrate::Commands::Loader => migrate::loader::migrate_loader().await,
             migrate::Commands::Minecraft => migrate::minecraft::migrate_minecraft().await,
+        },
+        Commands::Export { subcommand } => match subcommand {
+            commands::export::Commands::Modrinth { overrides_path } => export::modrinth::export_modrinth(overrides_path).await,
         }
     } {
         eprintln!("{}", err)
