@@ -93,9 +93,9 @@ fn primary_file(files: Vec<VersionFile>) -> VersionFile {
 
 pub async fn download_file(path: &PathBuf, url: &String) -> Result<()> {
     let res = reqwest::get(url).await?;
-    let body = res.text().await?;
+    let mut data = &*res.bytes().await?;
     let mut out = File::create(path)?;
-    std::io::copy(&mut body.as_bytes(), &mut out)?;
+    std::io::copy(&mut data, &mut out)?;
     Ok(())
 }
 
