@@ -1,12 +1,11 @@
-use std::{collections::HashMap, env, fs, path::PathBuf};
+use std::{collections::HashMap, env, fs::{self, File}, path::PathBuf};
 
 use ferinth::structures::version::VersionFile;
 use mrpack::structs::{FileHashes, Metadata, PackDependency};
+use tokio::task::JoinSet;
 
 use crate::{
-    structs::{Index, ModLoader, Modpack},
-    util::seperate_mods_by_platform,
-    Result, MODRINTH,
+    structs::{Index, ModLoader, Modpack}, util::{join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
@@ -57,12 +56,45 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         dependencies: pack_dependencies,
     };
 
-    mrpack::create(env::current_dir()?, metadata, overrides_path, None).unwrap();
+    let mod_overrides: Option<PathBuf>;
+
+    let cache_dir = env::current_dir()?.join(".cache");
+    if !cf_mods.is_empty() {
+        fs::create_dir_all(&cache_dir)?;
+    
+        let files = CURSEFORGE.get_files(cf_mods.into_iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
+
+        let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
+        for file in files {
+            let cache_dir = cache_dir.clone();
+            let task = async move {
+                download_file(&cache_dir.join(file.file_name), &file.download_url.unwrap().to_string()).await?;
+                Ok(())
+            };
+            tasks.spawn(task);
+        }
+
+        join_all(tasks).await?;
+        mod_overrides = Some(cache_dir.clone());
+    } else {
+        mod_overrides = None
+    }
+
+    mrpack::create(env::current_dir()?, metadata, overrides_path, mod_overrides).unwrap();
+    fs::remove_dir_all(cache_dir)?;
     Ok(())
 }
 
 fn primary_file(files: Vec<VersionFile>) -> VersionFile {
     files.into_iter().find(|f| f.primary).unwrap()
+}
+
+pub async fn download_file(path: &PathBuf, url: &String) -> Result<()> {
+    let res = reqwest::get(url).await?;
+    let body = res.text().await?;
+    let mut out = File::create(path)?;
+    std::io::copy(&mut body.as_bytes(), &mut out)?;
+    Ok(())
 }
 
 impl ModLoader {
