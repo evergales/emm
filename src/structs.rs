@@ -1,5 +1,4 @@
 use std::{env, fmt::Display, fs, path::PathBuf};
-use ferinth::structures::version;
 use serde::{Deserialize, Serialize};
 use crate::{Error, Result};
 
