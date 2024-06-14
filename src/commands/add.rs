@@ -34,7 +34,7 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
             }
 
             let latest_file = compatibles.into_iter().max_by_key(|f| f.file_date).unwrap();
-            to_add.push(Mod::new(cf_mod.name.to_owned(), None, Some(latest_file.mod_id), latest_file.id.to_string(), None));
+            to_add.push(Mod::new(cf_mod.name.to_owned(), None, Some(latest_file.mod_id), latest_file.id.to_string(), false));
             continue;
         }
 
@@ -65,7 +65,7 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
         let latest_compatible_version = compatible_versions.into_iter().max_by_key(|v| v.date_published).unwrap();
         let primary_file = latest_compatible_version.files.into_iter().find(|f| f.primary).unwrap();
         
-        to_add.push(Mod::new(mr_mod.title, Some(mr_mod.id), None, primary_file.hashes.sha1, None))
+        to_add.push(Mod::new(mr_mod.title, Some(mr_mod.id), None, primary_file.hashes.sha1, false))
     }
 
     add_mods(to_add)?;

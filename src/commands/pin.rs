@@ -11,7 +11,7 @@ pub async fn pin(mod_str: String) -> Result<()> {
         Some(index_mod) => {
             let idx = index.mods.iter().position(|m| m == index_mod).unwrap();
             println!("Pinning {}!", index_mod.name);
-            index.mods[idx].pinned = Some(true);
+            index.mods[idx].pinned = true;
         },
         None => {
             println!("Could not find {mod_str} in this modpack!")

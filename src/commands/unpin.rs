@@ -11,7 +11,7 @@ pub async fn unpin(mod_str: String) -> Result<()> {
         Some(index_mod) => {
             let idx = index.mods.iter().position(|m| m == index_mod).unwrap();
             println!("Unpinning {}!", index_mod.name);
-            index.mods[idx].pinned = None;
+            index.mods[idx].pinned = false;
         },
         None => {
             println!("Could not find {mod_str} in this modpack!")

@@ -84,11 +84,14 @@ pub struct Mod {
     pub modrinth_id: Option<String>,
     pub curseforge_id: Option<i32>,
     pub version: String, // curseforge version ids or modrinth file hashes
-    pub pinned: Option<bool>
+    // for a cleaner index, avoid having "pinned = false" listed under every mod
+    #[serde(default)] // if value not found use default, bool::default is false
+    #[serde(skip_serializing_if = "std::ops::Not::not")] // skip serializing if false, you cant make me create the "is_false" function
+    pub pinned: bool
 }
 
 impl Mod {
-    pub fn new(name: String, modrinth_id: Option<String>, curseforge_id: Option<i32>, version: String, pinned: Option<bool>) -> Self {
+    pub fn new(name: String, modrinth_id: Option<String>, curseforge_id: Option<i32>, version: String, pinned: bool) -> Self {
         Mod { name, modrinth_id, curseforge_id, version, pinned }
     }
 

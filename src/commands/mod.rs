@@ -76,7 +76,16 @@ pub enum Commands {
 pub fn mod_matches(m: &Mod, s: &String) -> bool {
     // names set to lowercase to make matching less case sensitive
     if m.name.to_lowercase() == s.to_lowercase() { return true; }
-    if m.modrinth_id.is_some() && m.modrinth_id.as_ref().unwrap() == s { return true; }
-    if m.curseforge_id.is_some() && m.curseforge_id.unwrap() == s.parse::<i32>().unwrap() { return true; } //todo: handle this parse error
-    false
+
+    if m.modrinth_id.is_some() {
+        return m.modrinth_id.as_ref().unwrap() == s;
+    }
+
+    if m.curseforge_id.is_some() {
+        if let Ok(id) = s.parse::<i32>() {
+            return m.curseforge_id.unwrap() == id;
+        }
+    }
+
+    false // I guess if it doesnt have a modrinth or curseforge id this is here
 }

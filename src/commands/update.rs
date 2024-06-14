@@ -11,7 +11,7 @@ pub async fn update() -> Result<()> {
     let modpack = Modpack::read()?;
     let mut index = Index::read()?;
     // filter out pinned mods so they dont get updated
-    index.mods.retain(|m| m.pinned.is_none() || m.pinned == Some(false)); 
+    index.mods.retain(|m| !m.pinned); 
 
     let (index_mr_mods, index_cf_mods) = seperate_mods_by_platform(index.mods.clone()).await?;
 
