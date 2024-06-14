@@ -42,7 +42,7 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
     let mut pack_dependencies: HashMap<PackDependency, String> = HashMap::new();
     pack_dependencies.insert(PackDependency::Minecraft, modpack.versions.minecraft);
     pack_dependencies.insert(
-        modpack.versions.mod_loader.into_packdependency(),
+        modpack.versions.mod_loader.into(),
         modpack.versions.loader_version,
     );
 
@@ -99,9 +99,9 @@ pub async fn download_file(path: &PathBuf, url: &String) -> Result<()> {
     Ok(())
 }
 
-impl ModLoader {
-    fn into_packdependency(self) -> PackDependency {
-        match self {
+impl From<ModLoader> for PackDependency {
+    fn from(value: ModLoader) -> Self {
+        match value {
             ModLoader::Fabric => PackDependency::FabricLoader,
             ModLoader::Quilt => PackDependency::QuiltLoader,
             ModLoader::Forge => PackDependency::Forge,

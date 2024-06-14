@@ -3,7 +3,6 @@ mod commands;
 mod util;
 
 use std::env;
-
 use ferinth::Ferinth;
 use furse::Furse;
 use lazy_static::lazy_static;
