@@ -81,7 +81,9 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
     }
 
     mrpack::create(env::current_dir()?, metadata, overrides_path, mod_overrides).unwrap();
-    fs::remove_dir_all(cache_dir)?;
+    if cache_dir.is_dir() {
+        fs::remove_dir_all(cache_dir)?;
+    }
     Ok(())
 }
 
