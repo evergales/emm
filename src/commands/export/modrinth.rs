@@ -1,8 +1,8 @@
-use std::{collections::HashMap, env, fs::{self, File}, path::PathBuf};
+use std::{collections::HashMap, env, fs::{self, File}, io::Write, path::PathBuf, sync::Arc};
 
 use ferinth::structures::version::VersionFile;
 use mrpack::structs::{FileHashes, Metadata, PackDependency};
-use tokio::task::JoinSet;
+use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
     structs::{Index, ModLoader, Modpack}, util::{join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
@@ -63,11 +63,15 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         fs::create_dir(&cache_dir)?;
     
         let files = CURSEFORGE.get_files(cf_mods.into_iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
+        let permits = Arc::new(Semaphore::new(10)); // limit file downloads to 10 at a time
 
         let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
         for file in files {
             let cache_dir = cache_dir.clone();
+            let permits = permits.clone();
+
             let task = async move {
+                let _permit = permits.acquire().await.unwrap();
                 download_file(&cache_dir.join(file.file_name), &file.download_url.unwrap().to_string()).await?;
                 Ok(())
             };
@@ -93,9 +97,9 @@ fn primary_file(files: Vec<VersionFile>) -> VersionFile {
 
 pub async fn download_file(path: &PathBuf, url: &String) -> Result<()> {
     let res = reqwest::get(url).await?;
-    let mut data = &*res.bytes().await?;
-    let mut out = File::create(path)?;
-    std::io::copy(&mut data, &mut out)?;
+    let data = &*res.bytes().await?;
+    let mut file = File::create(path)?;
+    file.write_all(data)?;
     Ok(())
 }
 
