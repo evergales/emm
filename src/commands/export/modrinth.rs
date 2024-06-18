@@ -58,9 +58,9 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
 
     let mod_overrides: Option<PathBuf>;
 
-    let cache_dir = env::current_dir()?.join(".cache");
+    let cache_dir = env::temp_dir().join(format!("emm-export-cache-{}", std::process::id()));
     if !cf_mods.is_empty() {
-        fs::create_dir_all(&cache_dir)?;
+        fs::create_dir(&cache_dir)?;
     
         let files = CURSEFORGE.get_files(cf_mods.into_iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
 
