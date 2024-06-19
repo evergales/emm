@@ -1,15 +1,24 @@
+use std::time::Duration;
 use dialoguer::Select;
 use ferinth::{check_id_slug, structures::{project::{Project, ProjectType}, search::{Facet, Sort}}};
 use furse::structures::file_structs::File;
+use indicatif::ProgressBar;
 
 use crate::{structs::{Index, Mod, Modpack}, Error, Result, CURSEFORGE, MODRINTH};
 
 pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: bool) -> Result<()> {
     let modpack = Modpack::read()?;
+    let progress = ProgressBar::new_spinner().with_message("Adding mods");
+    progress.enable_steady_tick(Duration::from_millis(100));
 
     let mut to_add: Vec<Mod> = Vec::new();
 
-    for id in mods {
+    let mods_len = mods.len();
+    for (idx, id) in mods.into_iter().enumerate() {
+        if mods_len > 1 {
+            progress.set_message(format!("Adding mods {}/{}", idx, mods_len));
+        }
+
         // handle curseforge mods
         // curseforge ids are always i32
         if let Ok(id) = id.parse::<i32>() {
@@ -39,7 +48,7 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
         }
 
         // handle modrinth mods
-        let mr_mod = match get_project_with_search(&id, &modpack, ignore_version, ignore_loader).await? {
+        let mr_mod = match get_project_with_search(&id, &modpack, ignore_version, ignore_loader, &progress).await? {
             Some(m) => m,
             None => continue,
         };
@@ -57,7 +66,7 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
             .await?;
 
         if compatible_versions.is_empty() {
-            eprintln!("{} has no compatible versions!", mr_mod.title);
+            progress.println(format!("{} has no compatible versions!", mr_mod.title));
             continue;
         }
 
@@ -65,9 +74,10 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
         let latest_compatible_version = compatible_versions.into_iter().max_by_key(|v| v.date_published).unwrap();
         let primary_file = latest_compatible_version.files.into_iter().find(|f| f.primary).unwrap();
         
-        to_add.push(Mod::new(mr_mod.title, Some(mr_mod.id), None, primary_file.hashes.sha1, false))
+        to_add.push(Mod::new(mr_mod.title, Some(mr_mod.id), None, primary_file.hashes.sha1, false));
     }
 
+    progress.finish_and_clear();
     add_mods(to_add)?;
     Ok(())
 }
@@ -91,7 +101,7 @@ pub fn add_mods(mods: Vec<Mod>) -> Result<()> {
 
 // try to get a modrinth project from id/slug string
 // & suggest search results if the id/slug cant be found
-async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bool, ignore_loader: bool) -> Result<Option<Project>> {
+async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bool, ignore_loader: bool, progress: &ProgressBar) -> Result<Option<Project>> {
     if let Ok(project) = valid_id_slug_helper(id).await  {
         Ok(Some(project))
     }
@@ -115,7 +125,7 @@ async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bo
         ).await?;
 
         if search_res.hits.is_empty() {
-            println!("Searching for '{id}' returned nothing");
+            progress.println(format!("Searching for '{id}' returned nothing"));
             return Ok(None);
         }
 
@@ -125,13 +135,18 @@ async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bo
         let chosen = if let Some(exact_match) = search_titles.iter().position(|t| t.to_lowercase() == id.to_lowercase()) {
             exact_match
         } else {
-            match Select::new()
-                .with_prompt(format!("suggestions for '{id}'"))
-                .items(&search_titles)
-                .interact_opt()? {
-                    Some(choice) => choice,
-                    None => return Ok(None), // selecting a suggestion is optional, return Ok(None) if none are selected
-                }
+            let selection = progress.suspend(|| {
+                Select::new()
+                    .with_prompt(format!("suggestions for '{id}'"))
+                    .items(&search_titles)
+                    .clear(true)
+                    .interact_opt().unwrap()
+            });
+
+            match selection {
+                Some(choice) => choice,
+                None => return Ok(None), // selecting a suggestion is optional, return Ok(None) if none are selected
+            }
         };
             
         let chosen_project = MODRINTH.get_project(&search_res.hits[chosen].project_id).await?;

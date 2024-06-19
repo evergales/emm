@@ -18,3 +18,4 @@ thiserror = "1.0.59"
 tokio = {version = "1.37.0", features = ["full"]}
 toml = "0.8.12"
 mrpack = { version = "0.1.0", path = "./mrpack" }
+indicatif = "0.17.8"

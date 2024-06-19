@@ -1,6 +1,7 @@
-use std::{collections::HashMap, env, fs::{self, File}, io::Write, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, env, fs::{self, File}, io::Write, path::PathBuf, sync::Arc, time::Duration};
 
 use ferinth::structures::version::VersionFile;
+use indicatif::ProgressBar;
 use mrpack::structs::{FileHashes, Metadata, PackDependency};
 use tokio::{sync::Semaphore, task::JoinSet};
 
@@ -12,6 +13,9 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
     let modpack = Modpack::read()?;
     let index = Index::read()?;
     let (mr_mods, cf_mods) = seperate_mods_by_platform(index.mods).await?;
+
+    let progress = ProgressBar::new_spinner().with_message("Starting export");
+    progress.enable_steady_tick(Duration::from_millis(100));
 
     // get primary files from stored version hashes from modrinth
     let mr_files: Vec<VersionFile> = MODRINTH
@@ -60,6 +64,7 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
 
     let cache_dir = env::temp_dir().join(format!("emm-export-cache-{}", std::process::id()));
     if !cf_mods.is_empty() {
+        progress.set_message("Downloading curseforge mods");
         fs::create_dir(&cache_dir)?;
     
         let files = CURSEFORGE.get_files(cf_mods.into_iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
@@ -84,10 +89,14 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         mod_overrides = None
     }
 
+    progress.set_message("Creating mrpack file");
     mrpack::create(env::current_dir()?, metadata, overrides_path, mod_overrides).unwrap();
     if cache_dir.is_dir() {
+        progress.set_message("Cleaning up");
         fs::remove_dir_all(cache_dir)?;
     }
+
+    progress.finish_with_message("Exported to mrpack!");
     Ok(())
 }
 

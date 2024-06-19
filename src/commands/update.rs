@@ -1,6 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 use ferinth::structures::version::LatestVersionBody;
 use furse::structures::file_structs::File;
+use indicatif::ProgressBar;
 use tokio::task::JoinSet;
 
 use crate::{
@@ -13,10 +14,14 @@ pub async fn update() -> Result<()> {
     // filter out pinned mods so they dont get updated
     index.mods.retain(|m| !m.pinned); 
 
+    let progress = ProgressBar::new_spinner().with_message("Updating mods");
+    progress.enable_steady_tick(Duration::from_millis(100));
+
     let (index_mr_mods, index_cf_mods) = seperate_mods_by_platform(index.mods.clone()).await?;
 
-    println!("finding updated versions..");
-
+    if !index_mr_mods.is_empty() {
+        progress.set_message("Finding modrinth updates");
+    }
     // returns a HashMap<inputed-hash, latest-version>
     // I didnt notice that for a while and did stupid stuff :D
     let latest_mr_versions = MODRINTH.latest_versions_from_hashes(
@@ -31,6 +36,9 @@ pub async fn update() -> Result<()> {
     let collected_cf_versions = Arc::new(Mutex::new(Vec::new()));
     let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
 
+    if !index_cf_mods.is_empty() {
+        progress.set_message("Finding curseforge updates");
+    }
     for cf_mod in index_cf_mods {
         let collected_cf_versions = Arc::clone(&collected_cf_versions);
         let modpack = modpack.clone();
@@ -62,6 +70,8 @@ pub async fn update() -> Result<()> {
     // get out of the Arc<Mutex<>>
     let latest_cf_versions = collected_cf_versions.lock().unwrap().clone();
     drop(collected_cf_versions);
+
+    progress.finish_and_clear();
 
     // pair of Mod and version id/hash
     let to_update: Vec<(Mod, String)> = index.mods.into_iter().filter_map(|i| {
