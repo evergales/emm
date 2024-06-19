@@ -44,27 +44,31 @@ pub enum Commands {
     #[command(alias = "up")]
     Update,
 
-    // Pin a mod to exclude it from updates
+    /// Pin a mod to exclude it from updates
     Pin {
         #[arg(name="mod")]
-        // A mod name/id you want to pin
-        m: String
+        /// A mod name/id you want to pin
+        m: String,
+
+        /// Pin the mod to this specific version id
+        #[arg(long, short='v')]
+        version: Option<String>
     },
 
-    // Unpin a mod to reinclude it in updates
+    /// Unpin a mod to reinclude it in updates
     Unpin {
         #[arg(name="mod")]
         // A mod name/id you want to unpin
         m: String
     },
 
-    // Export your modpack
+    /// Export your modpack
     Export {
         #[command(subcommand)]
         subcommand: export::Commands
     },
 
-    // Migrate your modpack to a new minecraft or mod loader version
+    /// Migrate your modpack to a new minecraft or mod loader version
     Migrate {
         #[command(subcommand)]
         subcommand: migrate::Commands

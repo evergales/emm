@@ -1,3 +1,4 @@
+use ferinth::structures::version::VersionFile;
 use tokio::task::JoinSet;
 
 use crate::{structs::{CurseforgeMod, MavenMetadata, Mod, ModByPlatform, ModLoader, Modrinthmod}, Error, Result};
@@ -22,6 +23,10 @@ pub async fn join_all(mut set: JoinSet<Result<()>>) -> Result<()> {
         let _ = res?;
     }
     Ok(())
+}
+
+pub fn primary_file(files: Vec<VersionFile>) -> VersionFile {
+    files.into_iter().find(|f| f.primary).unwrap()
 }
 
 pub async fn get_compatible_loader_versions(loader: &ModLoader, mc_version: &String) -> Result<Vec<String>> {

@@ -54,7 +54,7 @@ async fn main() {
         Commands::Init => commands::init::init().await,
         Commands::Add { mods, ignore_version, ignore_loader } => commands::add::add_mod(mods, ignore_version, ignore_loader).await,
         Commands::Remove { mods } => commands::remove::remove_mod(mods).await,
-        Commands::Pin { m } => commands::pin::pin(m).await,
+        Commands::Pin { m, version } => commands::pin::pin(m, version).await,
         Commands::Unpin { m } => commands::unpin::unpin(m).await,
         Commands::Update => commands::update::update().await,
         Commands::Migrate { subcommand } => match subcommand {

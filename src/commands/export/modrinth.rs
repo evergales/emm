@@ -5,7 +5,7 @@ use mrpack::structs::{FileHashes, Metadata, PackDependency};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{
-    structs::{Index, ModLoader, Modpack}, util::{join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
+    structs::{Index, ModLoader, Modpack}, util::{join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
@@ -89,10 +89,6 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         fs::remove_dir_all(cache_dir)?;
     }
     Ok(())
-}
-
-fn primary_file(files: Vec<VersionFile>) -> VersionFile {
-    files.into_iter().find(|f| f.primary).unwrap()
 }
 
 pub async fn download_file(path: &PathBuf, url: &String) -> Result<()> {
