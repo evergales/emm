@@ -10,7 +10,7 @@ use clap::Parser;
 use commands::{export, migrate, Commands};
 
 lazy_static! {
-    pub static ref MODRINTH: Ferinth = Ferinth::new("eg-mc", Some("0.1.0"), None, None).unwrap();
+    pub static ref MODRINTH: Ferinth = Ferinth::new("evergales/emm", option_env!("CARGO_PKG_VERSION"), Some("discord: evergales"), None).unwrap();
     pub static ref CURSEFORGE: Furse = {
         let key = env::var("CURSEFORGE_API_KEY").unwrap_or("$2a$10$Grlqtes/CrLoTgnvg174H.BKRX8caplGh0o1dOwxhhMWAgv.2J9cC".into());
         Furse::new(&key)
