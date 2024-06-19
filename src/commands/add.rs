@@ -1,5 +1,5 @@
 use dialoguer::Select;
-use ferinth::{check_id_slug, structures::{project::{Project, ProjectType}, search::Facet}};
+use ferinth::{check_id_slug, structures::{project::{Project, ProjectType}, search::{Facet, Sort}}};
 use furse::structures::file_structs::File;
 
 use crate::{structs::{Index, Mod, Modpack}, Error, Result, CURSEFORGE, MODRINTH};
@@ -96,20 +96,22 @@ async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bo
         Ok(Some(project))
     }
     else {
-        let mut search_facets = Vec::new();
-        search_facets.push(Facet::ProjectType(ProjectType::Mod));
+        let mut search_facets: Vec<Vec<Facet>> = Vec::new();
+        search_facets.push(vec![Facet::ProjectType(ProjectType::Mod)]);
 
         if !ignore_version {
-            search_facets.push(Facet::Categories(modpack.versions.minecraft.to_owned()))
+            search_facets.push(vec![Facet::Versions(modpack.versions.minecraft.to_owned())])
         }
         if !ignore_loader {
-            search_facets.push(Facet::Categories(modpack.versions.mod_loader.to_string()))
+            search_facets.push(vec![Facet::Categories(modpack.versions.mod_loader.to_string())])
         }
 
-        let search_res = MODRINTH.search(
+        let search_res = MODRINTH.search_paged(
             id,
-            &ferinth::structures::search::Sort::Relevance,
-            vec![search_facets]
+            &Sort::Relevance,
+            10,
+            0,
+            search_facets
         ).await?;
 
         if search_res.hits.is_empty() {
