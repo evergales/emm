@@ -6,7 +6,7 @@ use std::env;
 use ferinth::Ferinth;
 use furse::Furse;
 use lazy_static::lazy_static;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use commands::{export, migrate, Commands};
 
 lazy_static! {
@@ -63,6 +63,15 @@ async fn main() {
         },
         Commands::Export { subcommand } => match subcommand {
             commands::export::Commands::Modrinth { overrides_path } => export::modrinth::export_modrinth(overrides_path).await,
+        },
+        Commands::Completion { shell } => {
+            clap_complete::generate(
+                shell,
+                &mut Args::command(),
+                option_env!("CARGO_BIN_NAME").unwrap_or("emm"),
+                &mut std::io::stdout()
+            );
+            Ok(())
         }
     } {
         eprintln!("{}", err)
