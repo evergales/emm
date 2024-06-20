@@ -81,21 +81,20 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
     let override_mods_dir = env::current_dir()?.join("overrides/mods");
     if override_mods_dir.is_dir() {
         progress.set_message("Attempting to find override mods on curseforge");
-        // pair of path to file & cf_fingerprint
-        let mut cf_fingerprints: Vec<(usize, PathBuf)> = Vec::new();
+        let mut cf_fingerprints: Vec<usize> = Vec::new();
 
         // get fingerprints from files
         for entry in fs::read_dir(&override_mods_dir)? {
             let path = entry?.path();
             if path.is_file() && path.extension().unwrap_or_default() == "jar" {
                 let bytes = fs::read(&path)?;
-                cf_fingerprints.push((cf_fingerprint(&bytes), path));
+                cf_fingerprints.push(cf_fingerprint(&bytes));
             }
         }
 
         // find fingerprint matches
         let matches = CURSEFORGE
-            .get_fingerprint_matches(cf_fingerprints.iter().map(|f| f.0).collect())
+            .get_fingerprint_matches(cf_fingerprints)
             .await?;
         let cf_files: Vec<CurseFile> = matches.exact_matches.into_iter().map(|m| m.file).collect();
 
