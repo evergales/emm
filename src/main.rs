@@ -7,7 +7,7 @@ use ferinth::Ferinth;
 use furse::Furse;
 use lazy_static::lazy_static;
 use clap::{CommandFactory, Parser};
-use commands::{export, migrate, Commands};
+use commands::{export, import, migrate, Commands};
 
 lazy_static! {
     pub static ref MODRINTH: Ferinth = Ferinth::new("evergales/emm", option_env!("CARGO_PKG_VERSION"), Some("discord: evergales"), None).unwrap();
@@ -34,7 +34,9 @@ pub enum Error {
     Dialoguer(#[from] dialoguer::Error),
     Io(#[from] std::io::Error),
     JoinError(#[from] tokio::task::JoinError),
-    Reqwest(#[from] reqwest::Error)
+    Reqwest(#[from] reqwest::Error),
+    Json(#[from] serde_json::Error),
+    Zip(#[from] zip::result::ZipError)
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -61,6 +63,9 @@ async fn main() {
             migrate::Commands::Loader => migrate::loader::migrate_loader().await,
             migrate::Commands::Minecraft => migrate::minecraft::migrate_minecraft().await,
         },
+        Commands::Import { subcommand } => match subcommand {
+            commands::import::Commands::Modrinth { path } => import::modrinth::import_modrinth(path).await,
+        }
         Commands::Export { subcommand } => match subcommand {
             commands::export::Commands::Modrinth { overrides_path } => export::modrinth::export_modrinth(overrides_path).await,
         },

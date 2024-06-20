@@ -24,8 +24,8 @@ impl Modpack {
         Ok(toml_str)
     }
 
-    pub fn write(modpack: Self) -> Result<()> {
-        let str = toml::to_string(&modpack).unwrap();
+    pub fn write(modpack: &Self) -> Result<()> {
+        let str = toml::to_string(modpack).unwrap();
         fs::write(Self::path(), str)?;
         Ok(())
     }

@@ -83,7 +83,7 @@ pub async fn migrate_minecraft() -> Result<()> {
 
     modpack.versions.minecraft = mc_version;
     modpack.versions.loader_version = loader_version;
-    Modpack::write(modpack)?;
+    Modpack::write(&modpack)?;
 
     println!("run 'emm update' to update your mods");
     Ok(())

@@ -18,6 +18,6 @@ pub async fn migrate_loader() -> Result<()> {
     let selected_version = versions[selected_idx].to_owned();
 
     modpack.versions.loader_version = selected_version;
-    Modpack::write(modpack)?;
+    Modpack::write(&modpack)?;
     Ok(())
 }
