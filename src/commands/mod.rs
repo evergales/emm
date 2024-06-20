@@ -6,6 +6,7 @@ pub mod pin;
 pub mod unpin;
 pub mod migrate;
 pub mod export;
+pub mod import;
 
 use clap::Subcommand;
 use clap_complete::Shell;
@@ -61,6 +62,12 @@ pub enum Commands {
         #[arg(name="mod")]
         // A mod name/id you want to unpin
         m: String
+    },
+
+    /// Import modpack from another format
+    Import {
+        #[command(subcommand)]
+        subcommand: import::Commands
     },
 
     /// Export your modpack
