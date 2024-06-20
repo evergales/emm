@@ -1,11 +1,12 @@
 use std::{env, fs::{self, File}, io::Read, path::PathBuf, time::Duration};
 
 use dialoguer::Confirm;
+use furse::{cf_fingerprint, structures::file_structs::File as CurseFile};
 use indicatif::ProgressBar;
 use serde_json::from_str;
 use zip::ZipArchive;
 
-use crate::{structs::{Index, Mod, ModLoader, Modpack, ModpackAbout, ModpackVersions}, Error, Result, MODRINTH};
+use crate::{structs::{Index, Mod, ModLoader, Modpack, ModpackAbout, ModpackVersions}, Error, Result, CURSEFORGE, MODRINTH};
 
 use super::{Metadata, PackDependency};
 
@@ -72,15 +73,58 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
         }
     }).collect();
 
-    mods.sort_by_key(|m| m.name.to_owned());
-    Index::write(&Index { mods })?;
-
     // afaik zip doesnt have a way to extract certain directories (that isnt way too tedious)
     progress.set_message("Extracting overrides");
     zip.extract(env::current_dir()?)?;
     fs::remove_file(env::current_dir()?.join("modrinth.index.json"))?;
 
-    progress.finish_and_clear();
+    let override_mods_dir = env::current_dir()?.join("overrides/mods");
+    if override_mods_dir.is_dir() {
+        progress.set_message("Attempting to find override mods on curseforge");
+        // pair of path to file & cf_fingerprint
+        let mut cf_fingerprints: Vec<(usize, PathBuf)> = Vec::new();
+
+        // get fingerprints from files
+        for entry in fs::read_dir(&override_mods_dir)? {
+            let path = entry?.path();
+            if path.is_file() && path.extension().unwrap_or_default() == "jar" {
+                let bytes = fs::read(&path)?;
+                cf_fingerprints.push((cf_fingerprint(&bytes), path));
+            }
+        }
+
+        // find fingerprint matches
+        let matches = CURSEFORGE
+            .get_fingerprint_matches(cf_fingerprints.iter().map(|f| f.0).collect())
+            .await?;
+        let cf_files: Vec<CurseFile> = matches.exact_matches.into_iter().map(|m| m.file).collect();
+
+        for m in cf_files {
+            let cf_mod = CURSEFORGE.get_mod(m.mod_id).await?;
+
+            mods.push(Mod {
+                name: cf_mod.name,
+                modrinth_id: None,
+                curseforge_id: Some(cf_mod.id),
+                version: m.id.to_string(),
+                pinned: false
+            });
+
+            let file_path = override_mods_dir.join(m.file_name);
+            if file_path.is_file() {
+                fs::remove_file(file_path)?;
+            }
+        }
+
+        if fs::read_dir(&override_mods_dir)?.count() == 0 {
+            fs::remove_dir(&override_mods_dir)?;
+        } 
+    }
+
+    mods.sort_by_key(|m| m.name.to_owned());
+    Index::write(&Index { mods })?;
+
+    progress.finish_with_message(format!("Imported {}", modpack.about.name));
     Ok(())
 }
 
