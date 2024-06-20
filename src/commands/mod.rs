@@ -8,6 +8,7 @@ pub mod migrate;
 pub mod export;
 
 use clap::Subcommand;
+use clap_complete::Shell;
 
 use crate::structs::Mod;
 
@@ -72,6 +73,12 @@ pub enum Commands {
     Migrate {
         #[command(subcommand)]
         subcommand: migrate::Commands
+    },
+
+    /// Print shell completions for specified shell
+    Completion {
+        #[clap(value_enum)]
+        shell: Shell
     }
 
 }
