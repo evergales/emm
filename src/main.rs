@@ -7,7 +7,7 @@ use ferinth::Ferinth;
 use furse::Furse;
 use lazy_static::lazy_static;
 use clap::{CommandFactory, Parser};
-use commands::{export, import, migrate, Commands};
+use commands::{migrate, modrinth, Commands};
 
 lazy_static! {
     pub static ref MODRINTH: Ferinth = Ferinth::new("evergales/emm", option_env!("CARGO_PKG_VERSION"), Some("discord: evergales"), None).unwrap();
@@ -64,10 +64,10 @@ async fn main() {
             migrate::Commands::Minecraft => migrate::minecraft::migrate_minecraft().await,
         },
         Commands::Import { subcommand } => match subcommand {
-            commands::import::Commands::Modrinth { path } => import::modrinth::import_modrinth(path).await,
+            commands::import::Commands::Modrinth { path } => modrinth::import::import_modrinth(path).await,
         }
         Commands::Export { subcommand } => match subcommand {
-            commands::export::Commands::Modrinth { overrides_path } => export::modrinth::export_modrinth(overrides_path).await,
+            commands::export::Commands::Modrinth { overrides_path } => modrinth::export::export_modrinth(overrides_path).await,
         },
         Commands::Completion { shell } => {
             clap_complete::generate(

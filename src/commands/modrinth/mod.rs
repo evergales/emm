@@ -1,19 +1,9 @@
-pub mod modrinth;
+pub mod import;
+pub mod export;
 
 use std::{collections::HashMap, path::PathBuf};
-
-use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 use url::Url;
-
-#[derive(Subcommand)]
-pub enum Commands {
-    /// Export to mrpack format
-    Modrinth {
-        /// Path to mrpack overrides
-        overrides_path: Option<PathBuf>
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
