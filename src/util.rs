@@ -29,6 +29,24 @@ pub fn primary_file(files: Vec<VersionFile>) -> VersionFile {
     files.into_iter().find(|f| f.primary).unwrap()
 }
 
+// determine if a mod matches a name or id 
+pub fn mod_matches(m: &Mod, s: &String) -> bool {
+    // names set to lowercase to make matching less case sensitive
+    if m.name.to_lowercase() == s.to_lowercase() { return true; }
+
+    if m.modrinth_id.is_some() {
+        return m.modrinth_id.as_ref().unwrap() == s;
+    }
+
+    if m.curseforge_id.is_some() {
+        if let Ok(id) = s.parse::<i32>() {
+            return m.curseforge_id.unwrap() == id;
+        }
+    }
+
+    false // I guess if it doesnt have a modrinth or curseforge id this is here
+}
+
 pub async fn get_compatible_loader_versions(loader: &ModLoader, mc_version: &String) -> Result<Vec<String>> {
     let metadata = loader.get_version_maven().await?;
 

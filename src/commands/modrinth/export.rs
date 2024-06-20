@@ -6,9 +6,7 @@ use tokio::{sync::Semaphore, task::JoinSet};
 use walkdir::WalkDir;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::{
-    structs::{Index, ModLoader, Modpack}, util::{join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
-};
+use crate::{structs::{Index, ModLoader, Modpack}, util::{join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
 
 use super::{FileHashes, Game, Metadata, PackDependency};
 

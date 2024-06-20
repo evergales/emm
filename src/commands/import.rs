@@ -1,5 +1,3 @@
-pub mod modrinth;
-
 use std::path::PathBuf;
 
 use clap::Subcommand;

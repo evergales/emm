@@ -1,6 +1,4 @@
-use crate::{structs::Index, Result};
-
-use super::mod_matches;
+use crate::{structs::Index, util::mod_matches, Result};
 
 pub async fn remove_mod(mods: Vec<String>) -> Result<()> {
     let mut index = Index::read()?;

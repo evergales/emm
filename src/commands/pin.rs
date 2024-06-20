@@ -1,5 +1,4 @@
-use super::mod_matches;
-use crate::{structs::{Index, ModByPlatform, Modpack}, util::primary_file, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, ModByPlatform, Modpack}, util::{mod_matches, primary_file}, Result, CURSEFORGE, MODRINTH};
 
 pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
     let modpack = Modpack::read()?;

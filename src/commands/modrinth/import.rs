@@ -5,7 +5,9 @@ use indicatif::ProgressBar;
 use serde_json::from_str;
 use zip::ZipArchive;
 
-use crate::{commands::export::{Metadata, PackDependency}, structs::{Index, Mod, ModLoader, Modpack, ModpackAbout, ModpackVersions}, Error, Result, MODRINTH};
+use crate::{structs::{Index, Mod, ModLoader, Modpack, ModpackAbout, ModpackVersions}, Error, Result, MODRINTH};
+
+use super::{Metadata, PackDependency};
 
 pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
     if Modpack::read().is_ok() {
@@ -28,8 +30,7 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
     let mut zip = ZipArchive::new(File::open(mrpack_path)?)?;
 
     let mut mrpack_string = String::new();
-    zip.by_name("modrinth.index.json")?
-        .read_to_string(&mut mrpack_string)?;
+    zip.by_name("modrinth.index.json")?.read_to_string(&mut mrpack_string)?;
     let mrpack: Metadata = from_str(&mrpack_string)?;
 
     let mc_version = mrpack.dependencies.get_key_value(&PackDependency::Minecraft).unwrap().1.to_owned();
