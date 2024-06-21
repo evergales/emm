@@ -61,6 +61,12 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         dependencies: pack_dependencies,
     };
 
+    /* 
+    todo:
+    currently all mods & other downloadable cf projects get dumped into the mods folder
+    these should all go into their own individual folders
+    */
+
     let mod_overrides: Option<PathBuf>;
 
     let cache_dir = env::temp_dir().join(format!("emm-export-cache-{}", std::process::id()));

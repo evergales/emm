@@ -1,4 +1,4 @@
-use crate::{structs::{Index, ModByPlatform, Modpack}, util::{mod_matches, primary_file}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{CurseforgeMod, Index, ModPlatform, Modpack}, util::{mod_matches, primary_file}, Result, CURSEFORGE, MODRINTH};
 
 pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
     let modpack = Modpack::read()?;
@@ -13,8 +13,8 @@ pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
     };
 
     let version: Option<String> = match &version_id {
-        Some(version_id) => match index_mod.clone().seperate_by_platform()? {
-            ModByPlatform::ModrinthMod(_) => {
+        Some(version_id) => match index_mod.clone().platform {
+            ModPlatform::Modrinth => {
                 let version = MODRINTH.get_version(version_id).await?;
                 let compatible = {
                     version.loaders.contains(&modpack.versions.mod_loader.to_string().to_lowercase())
@@ -29,7 +29,8 @@ pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
 
                 Some(primary_file(version.files).hashes.sha1)
             }
-            ModByPlatform::CurseforgeMod(cf_mod) => {
+            ModPlatform::CurseForge => {
+                let cf_mod = CurseforgeMod::try_from(index_mod.to_owned())?;
                 let version_id = match version_id.parse::<i32>() {
                     Ok(id) => id,
                     Err(_) => {

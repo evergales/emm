@@ -6,7 +6,7 @@ use indicatif::ProgressBar;
 use serde_json::from_str;
 use zip::ZipArchive;
 
-use crate::{structs::{Index, Mod, ModLoader, Modpack, ModpackAbout, ModpackVersions}, Error, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, Mod, ModLoader, ModPlatform, Modpack, ModpackAbout, ModpackVersions, ProjectType}, Error, Result, CURSEFORGE, MODRINTH};
 
 use super::{Metadata, PackDependency};
 
@@ -66,8 +66,9 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
         let version_hash = versions.iter().find(|v| v.1.project_id == project.id).unwrap().0;
         Mod {
             name: project.title,
-            modrinth_id: Some(project.id),
-            curseforge_id: None,
+            project_type: ProjectType::Mod,
+            platform: ModPlatform::Modrinth,
+            id: project.id,
             version: version_hash.to_owned(),
             pinned: false,
         }
@@ -93,9 +94,7 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
         }
 
         // find fingerprint matches
-        let matches = CURSEFORGE
-            .get_fingerprint_matches(cf_fingerprints)
-            .await?;
+        let matches = CURSEFORGE.get_fingerprint_matches(cf_fingerprints).await?;
         let cf_files: Vec<CurseFile> = matches.exact_matches.into_iter().map(|m| m.file).collect();
 
         for m in cf_files {
@@ -103,8 +102,9 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
 
             mods.push(Mod {
                 name: cf_mod.name,
-                modrinth_id: None,
-                curseforge_id: Some(cf_mod.id),
+                project_type: ProjectType::Mod,
+                platform: ModPlatform::CurseForge,
+                id: cf_mod.id.to_string(),
                 version: m.id.to_string(),
                 pinned: false
             });
@@ -121,7 +121,7 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
     }
 
     mods.sort_by_key(|m| m.name.to_owned());
-    Index::write(&Index { mods })?;
+    Index::write(&Index { mods, overrides: Vec::new() })?;
 
     progress.finish_with_message(format!("Imported {}", modpack.about.name));
     Ok(())

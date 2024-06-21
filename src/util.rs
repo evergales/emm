@@ -1,7 +1,7 @@
 use ferinth::structures::version::VersionFile;
 use tokio::task::JoinSet;
 
-use crate::{structs::{CurseforgeMod, MavenMetadata, Mod, ModByPlatform, ModLoader, Modrinthmod}, Error, Result};
+use crate::{structs::{CurseforgeMod, MavenMetadata, Mod, ModLoader, ModPlatform, Modrinthmod}, Error, Result};
 
 impl ModLoader {
     pub async fn get_version_maven(&self) -> Result<MavenMetadata> {
@@ -34,16 +34,15 @@ pub fn mod_matches(m: &Mod, s: &String) -> bool {
     // names set to lowercase to make matching less case sensitive
     if m.name.to_lowercase() == s.to_lowercase() { return true; }
 
-    if m.modrinth_id.is_some() {
-        return m.modrinth_id.as_ref().unwrap() == s;
+    match m.platform {
+        ModPlatform::Modrinth => {return &m.id == s},
+        ModPlatform::CurseForge => {
+            if let Ok(id) = s.parse::<i32>() {
+                return m.id.parse::<i32>().unwrap_or_default() == id;
+            }
+        },
     }
-
-    if m.curseforge_id.is_some() {
-        if let Ok(id) = s.parse::<i32>() {
-            return m.curseforge_id.unwrap() == id;
-        }
-    }
-
+    
     false // I guess if it doesnt have a modrinth or curseforge id this is here
 }
 
@@ -100,9 +99,13 @@ pub async fn seperate_mods_by_platform(mods: Vec<Mod>) -> Result<(Vec<Modrinthmo
     let mut cf_mods: Vec<CurseforgeMod> = Vec::new();
 
     for i in mods {
-        match i.seperate_by_platform()? {
-            ModByPlatform::ModrinthMod(mr_mod) => mr_mods.push(mr_mod),
-            ModByPlatform::CurseforgeMod(cf_mod) => cf_mods.push(cf_mod),
+        match i.platform {
+            ModPlatform::Modrinth => {
+                mr_mods.push(Modrinthmod::from(i));
+            },
+            ModPlatform::CurseForge => {
+                cf_mods.push(CurseforgeMod::try_from(i)?)
+            },
         }
     }
 
