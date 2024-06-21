@@ -1,10 +1,11 @@
 use std::time::Duration;
 use dialoguer::Select;
-use ferinth::{check_id_slug, structures::{project::{Project, ProjectType}, search::{Facet, Sort}}};
+use ferinth::{check_id_slug, structures::{project::{Project, ProjectType as MRProjectType}, search::{Facet, Sort}}};
 use furse::structures::file_structs::File;
 use indicatif::ProgressBar;
+use tokio::try_join;
 
-use crate::{structs::{Index, Mod, Modpack}, Error, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, Mod, ModPlatform, Modpack, ProjectType}, Error, Result, CURSEFORGE, MODRINTH};
 
 pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: bool) -> Result<()> {
     let modpack = Modpack::read()?;
@@ -23,27 +24,37 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
         // curseforge ids are always i32
         if let Ok(id) = id.parse::<i32>() {
             // File structure doesnt contain the mod name so we need to check that seperately..
-            let cf_mod = CURSEFORGE.get_mod(id).await?;
+            let (cf_mod, files) = try_join!(
+                CURSEFORGE.get_mod(id),
+                CURSEFORGE.get_mod_files(id)
+            )?;
                     
             // 432 == minecraft
             if cf_mod.game_id != 432 { 
                 return Err(Error::Other(format!("{} is not a minecraft mod silly!", cf_mod.name)));
             }
-        
-            let files = CURSEFORGE.get_mod_files(cf_mod.id).await?;
+
+            let project_type = ProjectType::try_from(cf_mod.class_id.unwrap())?;
     
             let compatibles = files.into_iter().filter(|f| 
                     f.is_available
-                    && if !ignore_loader { f.game_versions.contains(&modpack.versions.mod_loader.to_string()) } else { true }
+                    && if !ignore_loader && matches!(project_type, ProjectType::Mod) { f.game_versions.contains(&modpack.versions.mod_loader.to_string()) } else { true }
                     && if !ignore_version { f.game_versions.contains(&modpack.versions.minecraft) } else { true }
                 ).collect::<Vec<File>>();
             
             if compatibles.is_empty() {
-                return Err(Error::Other(format!("No compatible versions for mod with id: '{}' on curseforge", cf_mod.name)));
+                return Err(Error::Other(format!("No compatible versions for mod: '{}' on curseforge", cf_mod.name)));
             }
 
             let latest_file = compatibles.into_iter().max_by_key(|f| f.file_date).unwrap();
-            to_add.push(Mod::new(cf_mod.name.to_owned(), None, Some(latest_file.mod_id), latest_file.id.to_string(), false));
+            to_add.push(Mod {
+                name: cf_mod.name,
+                project_type,
+                platform: ModPlatform::CurseForge,
+                id: cf_mod.id.to_string(),
+                version: latest_file.id.to_string(),
+                pinned: false,
+            });
             continue;
         }
 
@@ -53,13 +64,20 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
             None => continue,
         };
 
+        match mr_mod.project_type {
+            MRProjectType::Modpack | MRProjectType::Plugin => {
+                return Err(Error::Other(format!("Unable to add {} becaue its project type is unsupported", mr_mod.title)));
+            }
+            _ => {}
+        }
+
         // I honestly dont know how &[&str] works so-
         let loader_slice = &[&*modpack.versions.mod_loader.to_string().to_lowercase()];
         let version_slice = &[&*modpack.versions.minecraft];
 
         let compatible_versions = MODRINTH.list_versions_filtered(
                 &mr_mod.id,
-                if !ignore_loader { Some(loader_slice) } else { None },
+                if !ignore_loader && matches!(mr_mod.project_type, MRProjectType::Mod) { Some(loader_slice) } else { None },
                 if !ignore_version { Some(version_slice) } else { None },
                 None,
             )
@@ -74,7 +92,14 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
         let latest_compatible_version = compatible_versions.into_iter().max_by_key(|v| v.date_published).unwrap();
         let primary_file = latest_compatible_version.files.into_iter().find(|f| f.primary).unwrap();
         
-        to_add.push(Mod::new(mr_mod.title, Some(mr_mod.id), None, primary_file.hashes.sha1, false));
+        to_add.push(Mod {
+            name: mr_mod.title,
+            project_type: mr_mod.project_type.try_into()?,
+            platform: ModPlatform::Modrinth,
+            id: mr_mod.id,
+            version: primary_file.hashes.sha1,
+            pinned: false,
+        })
     }
 
     progress.finish_and_clear();
@@ -107,7 +132,7 @@ async fn get_project_with_search(id: &str, modpack: &Modpack, ignore_version: bo
     }
     else {
         let mut search_facets: Vec<Vec<Facet>> = Vec::new();
-        search_facets.push(vec![Facet::ProjectType(ProjectType::Mod)]);
+        search_facets.push(vec![Facet::ProjectType(MRProjectType::Mod)]);
 
         if !ignore_version {
             search_facets.push(vec![Facet::Versions(modpack.versions.minecraft.to_owned())])

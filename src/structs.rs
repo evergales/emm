@@ -1,5 +1,7 @@
 use std::{env, fmt::Display, fs, path::PathBuf};
+use ferinth::structures::project::ProjectType as MRProjectType;
 use serde::{Deserialize, Serialize};
+use url::Url;
 use crate::{Error, Result};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -40,7 +42,6 @@ pub struct ModpackAbout {
     // maybe resource links here?
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ModpackVersions {
     pub minecraft: String,
@@ -48,10 +49,12 @@ pub struct ModpackVersions {
     pub loader_version: String
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[serde(default)]
 pub struct Index {
-    #[serde(default)]
-    pub mods: Vec<Mod>
+    pub mods: Vec<Mod>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub overrides: Vec<Url>
 }
 
 impl Index {
@@ -64,7 +67,7 @@ impl Index {
             return Err(Error::Uninitialized);
         }
         if !Self::path().is_file() {
-            Self::write(&Index { mods: Vec::new() })?;
+            Self::write(&Index { mods: Vec::new(), overrides: Vec::new() })?;
         }
         let index_str = &fs::read_to_string(Self::path()).map_err(|_| Error::Uninitialized)?;
         let toml_str = toml::from_str(index_str).map_err(|err| Error::Parse(format!("Error while parsing index to toml {err}")))?;
@@ -81,8 +84,10 @@ impl Index {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Mod {
     pub name: String,
-    pub modrinth_id: Option<String>,
-    pub curseforge_id: Option<i32>,
+    #[serde(rename = "type")]
+    pub project_type: ProjectType,
+    pub platform: ModPlatform,
+    pub id: String, // curseforge/modrinth id
     pub version: String, // curseforge version ids or modrinth file hashes
     // for a cleaner index, avoid having "pinned = false" listed under every mod
     #[serde(default)] // if value not found use default, bool::default is false
@@ -90,37 +95,32 @@ pub struct Mod {
     pub pinned: bool
 }
 
-impl Mod {
-    pub fn new(name: String, modrinth_id: Option<String>, curseforge_id: Option<i32>, version: String, pinned: bool) -> Self {
-        Mod { name, modrinth_id, curseforge_id, version, pinned }
-    }
-
-    pub fn seperate_by_platform(self) -> Result<ModByPlatform> {
-        if self.modrinth_id.is_some() {
-            return Ok(ModByPlatform::ModrinthMod(Modrinthmod {
-                name: self.name,
-                id: self.modrinth_id.unwrap(),
-                version: self.version
-            }));
-        };
-
-        if self.curseforge_id.is_some() {
-            return Ok(ModByPlatform::CurseforgeMod(CurseforgeMod { 
-                name: self.name.to_owned(),
-                id: self.curseforge_id.unwrap(),
-                version: self.version.parse::<i32>().map_err(|_| Error::Parse(format!("Could not parse cf mod version to int {:#?}", self)))?
-            }));
-        };
-
-        Err(Error::Parse(format!("Something went wrong while trying to parse {:#?}\nas platform specific", self)))
-    }
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub enum ModPlatform {
+    Modrinth,
+    CurseForge,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub enum ProjectType {
+    Mod,
+    Datapack,
+    Shader,
+    Resourcepack,
+    // you cant add plugins for now
+}
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum ModByPlatform {
-    ModrinthMod(Modrinthmod),
-    CurseforgeMod(CurseforgeMod)
+impl TryFrom<MRProjectType> for ProjectType {
+    type Error = crate::Error;
+    fn try_from(value: MRProjectType) -> std::result::Result<Self, Self::Error> {
+        match value {
+            MRProjectType::Mod => Ok(Self::Mod),
+            MRProjectType::Shader => Ok(Self::Shader),
+            MRProjectType::Datapack => Ok(Self::Datapack),
+            MRProjectType::ResourcePack => Ok(Self::Resourcepack),
+            _ => Err(Error::Parse(format!("{:?} project type is unsupported", value)))
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -130,11 +130,44 @@ pub struct Modrinthmod {
     pub version: String
 }
 
+impl From<Mod> for Modrinthmod {
+    fn from(value: Mod) -> Self {
+        Self { name: value.name, id: value.id, version: value.version }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CurseforgeMod {
     pub name: String,
     pub id: i32,
     pub version: i32
+}
+
+impl TryFrom<Mod> for CurseforgeMod {
+    type Error = crate::Error; 
+    fn try_from(value: Mod) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            name: value.name,
+            id: value.id.parse::<i32>().map_err(|_| Error::Parse(format!("curseforge id: {} to Integer", value.id)))?,
+            version: value.version.parse::<i32>().map_err(|_| Error::Parse(format!("curseforge version id: {} to Integer", value.version)))?
+        })
+    }
+}
+
+// from class_id to readable cf project type
+// the cf api documentation sucks..
+// https://api.curseforge.com/v1/categories/?gameId=432&classesOnly=true
+impl TryFrom<usize> for ProjectType {
+    type Error = crate::Error;
+    fn try_from(value: usize) -> std::result::Result<Self, Self::Error> {
+        match value {            
+            6 => Ok(Self::Mod),
+            6552 => Ok(Self::Shader),
+            6945 => Ok(Self::Datapack),
+            12 => Ok(Self::Resourcepack),
+            _ => Err(Error::Parse("This curseforge project type is unsupported".to_string()))
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

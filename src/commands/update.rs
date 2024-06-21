@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::task::JoinSet;
 
 use crate::{
-    util::seperate_mods_by_platform, structs::{Index, Mod, Modpack}, Result, CURSEFORGE, MODRINTH
+    structs::{Index, Mod, ModPlatform, Modpack}, util::seperate_mods_by_platform, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn update() -> Result<()> {
@@ -75,16 +75,24 @@ pub async fn update() -> Result<()> {
 
     // pair of Mod and version id/hash
     let to_update: Vec<(Mod, String)> = index.mods.into_iter().filter_map(|i| {
-        if i.modrinth_id.is_some() {
-            let latest_hash = latest_mr_versions.get(&i.version)?.files.iter().find(|f| f.primary).unwrap().hashes.sha1.to_owned();
-            if latest_hash != i.version {
-                return Some((i, latest_hash));
-            }
-        }
-        if i.curseforge_id.is_some() && !latest_cf_versions.iter().any(|v| v.id == i.version.parse::<i32>().unwrap()) {
-            if let Some(new_version) = latest_cf_versions.iter().find(|v| v.mod_id == i.curseforge_id.unwrap()) {
-                return Some((i, new_version.id.to_string()));
-            }
+        match i.platform {
+            ModPlatform::Modrinth => {
+                let latest_hash = latest_mr_versions.get(&i.version)?.files.iter().find(|f| f.primary).unwrap().hashes.sha1.to_owned();
+                if latest_hash != i.version {
+                    return Some((i, latest_hash));
+                }
+            },
+            ModPlatform::CurseForge => {
+                if latest_cf_versions.iter().any(|v| v.id == i.version.parse::<i32>().unwrap()) {
+                    return None;
+                }
+
+                return latest_cf_versions
+                    .iter()
+                    .find(|v| v.mod_id == i.id.parse::<i32>().unwrap())
+                    .map(|version| (i, version.id.to_string()))
+            },
+
         }
 
         None
