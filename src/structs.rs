@@ -96,12 +96,14 @@ pub struct Mod {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum ModPlatform {
     Modrinth,
     CurseForge,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum ProjectType {
     Mod,
     Datapack,
@@ -120,6 +122,34 @@ impl TryFrom<MRProjectType> for ProjectType {
             MRProjectType::ResourcePack => Ok(Self::Resourcepack),
             _ => Err(Error::Parse(format!("{:?} project type is unsupported", value)))
         }
+    }
+}
+
+// from class_id to readable cf project type
+// the cf api documentation sucks..
+// https://api.curseforge.com/v1/categories/?gameId=432&classesOnly=true
+impl TryFrom<usize> for ProjectType {
+    type Error = crate::Error;
+    fn try_from(value: usize) -> std::result::Result<Self, Self::Error> {
+        match value {            
+            6 => Ok(Self::Mod),
+            6552 => Ok(Self::Shader),
+            6945 => Ok(Self::Datapack),
+            12 => Ok(Self::Resourcepack),
+            _ => Err(Error::Parse("This curseforge project type is unsupported".to_string()))
+        }
+    }
+}
+
+impl Display for ProjectType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", 
+            match self {
+                ProjectType::Mod => "mod",
+                ProjectType::Datapack => "datapack",
+                ProjectType::Shader => "shader",
+                ProjectType::Resourcepack => "resourcepack",
+            })
     }
 }
 
@@ -154,23 +184,8 @@ impl TryFrom<Mod> for CurseforgeMod {
     }
 }
 
-// from class_id to readable cf project type
-// the cf api documentation sucks..
-// https://api.curseforge.com/v1/categories/?gameId=432&classesOnly=true
-impl TryFrom<usize> for ProjectType {
-    type Error = crate::Error;
-    fn try_from(value: usize) -> std::result::Result<Self, Self::Error> {
-        match value {            
-            6 => Ok(Self::Mod),
-            6552 => Ok(Self::Shader),
-            6945 => Ok(Self::Datapack),
-            12 => Ok(Self::Resourcepack),
-            _ => Err(Error::Parse("This curseforge project type is unsupported".to_string()))
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum ModLoader {
     Fabric,
     Quilt,

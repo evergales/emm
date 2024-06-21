@@ -6,14 +6,14 @@ use tokio::{sync::Semaphore, task::JoinSet};
 use walkdir::WalkDir;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::{structs::{Index, ModLoader, Modpack}, util::{join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, Mod, ModLoader, ModPlatform, Modpack}, util::{join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
 
 use super::{FileHashes, Game, Metadata, PackDependency};
 
 pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
     let modpack = Modpack::read()?;
     let index = Index::read()?;
-    let (mr_mods, cf_mods) = seperate_mods_by_platform(index.mods).await?;
+    let (mr_mods, cf_mods) = seperate_mods_by_platform(index.mods.clone()).await?;
 
     let progress = ProgressBar::new_spinner().with_message("Starting export");
     progress.enable_steady_tick(Duration::from_millis(100));
@@ -76,15 +76,21 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
     
         let files = CURSEFORGE.get_files(cf_mods.into_iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
         let permits = Arc::new(Semaphore::new(10)); // limit file downloads to 10 at a time
+        let index_cf_mods: Vec<Mod> = index.mods.into_iter().filter(|m| matches!(m.platform, ModPlatform::CurseForge)).collect();
 
         let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
         for file in files {
             let cache_dir = cache_dir.clone();
             let permits = permits.clone();
+            let project_type = &index_cf_mods.iter().find(|m| m.id == file.mod_id.to_string()).unwrap().project_type;
+            let folder_name = format!("{}s", project_type);
+            if !&cache_dir.join(&folder_name).is_dir() {
+                fs::create_dir(&cache_dir.join(&folder_name))?;
+            }
 
             let task = async move {
                 let _permit = permits.acquire().await.unwrap();
-                download_file(&cache_dir.join(file.file_name), &file.download_url.unwrap().to_string()).await?;
+                download_file(&cache_dir.join(folder_name).join(file.file_name), &file.download_url.unwrap().to_string()).await?;
                 Ok(())
             };
             tasks.spawn(task);
@@ -126,14 +132,16 @@ pub fn create_mrpack(path: PathBuf, metadata: Metadata, overrides: Option<PathBu
     let metadata_str = serde_json::to_string_pretty(&metadata).unwrap();
     zip.write_all(metadata_str.as_bytes())?;
 
-    if overrides.is_some() {
+    if overrides.is_some() || mod_overrides.is_some() {
         zip.add_directory("overrides", options)?;
+    }
+
+    if overrides.is_some() {
         add_recursively(overrides.unwrap(), "overrides".into(), &mut zip, options)?;
     }
 
     if mod_overrides.is_some() {
-        zip.add_directory("overrides/mods", options)?;
-        add_recursively(mod_overrides.unwrap(), "overrides/mods".into(), &mut zip, options)?;
+        add_recursively(mod_overrides.unwrap(), "overrides".into(), &mut zip, options)?;
     }
 
     zip.finish()?;
@@ -155,8 +163,6 @@ fn add_recursively(from_path: PathBuf, zip_path: PathBuf, zip: &mut ZipWriter<Fi
             f.read_to_end(&mut buffer)?;
             zip.write_all(&buffer)?;
             buffer.clear()
-        } else if !file_name.as_os_str().is_empty() {
-            zip.add_directory(path_as_string, options)?;
         }
     }
 
