@@ -63,13 +63,13 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
     let projects = MODRINTH.get_multiple_projects(&project_ids).await?;
 
     let mut mods: Vec<Mod> = projects.into_iter().map(|project| {
-        let version_hash = versions.iter().find(|v| v.1.project_id == project.id).unwrap().0;
+        let version = versions.iter().find(|v| v.1.project_id == project.id).unwrap().1;
         Mod {
             name: project.title,
             project_type: ProjectType::Mod,
             platform: ModPlatform::Modrinth,
             id: project.id,
-            version: version_hash.to_owned(),
+            version: version.id.to_owned(),
             pinned: false,
         }
     }).collect();

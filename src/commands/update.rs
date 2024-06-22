@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::task::JoinSet;
 
 use crate::{
-    structs::{Index, Mod, ModPlatform, Modpack}, util::seperate_mods_by_platform, Result, CURSEFORGE, MODRINTH
+    structs::{Index, Mod, ModPlatform, Modpack}, util::{primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn update() -> Result<()> {
@@ -22,12 +22,27 @@ pub async fn update() -> Result<()> {
     if !index_mr_mods.is_empty() {
         progress.set_message("Finding modrinth updates");
     }
+
+    let mr_verions = MODRINTH
+        .get_multiple_versions(
+            index_mr_mods
+                .iter()
+                .map(|m| m.version.as_str())
+                .collect::<Vec<&str>>()
+                .as_slice(),
+        )
+        .await?;
+    let mr_version_hashes: Vec<String> =  mr_verions.into_iter().map(|v| primary_file(v.files).hashes.sha1).collect();
+
+    // include these for: shader, datapack, resourcepack support when getting latest versions
+    let other_supported_loaders: Vec<String> = vec!["iris", "canvas", "optifine", "datapack", "minecraft"].into_iter().map(|s| s.into()).collect();
+
     // returns a HashMap<inputed-hash, latest-version>
     // I didnt notice that for a while and did stupid stuff :D
     let latest_mr_versions = MODRINTH.latest_versions_from_hashes(
-            index_mr_mods.into_iter().map(|m| m.version).collect(),
+            mr_version_hashes,
             LatestVersionBody {
-                loaders: vec![modpack.versions.mod_loader.to_string().to_lowercase()],
+                loaders: vec![modpack.versions.mod_loader.to_string().to_lowercase()].into_iter().chain(other_supported_loaders).collect(),
                 game_versions: vec![modpack.versions.minecraft.clone()],
             },
         )
@@ -77,9 +92,9 @@ pub async fn update() -> Result<()> {
     let to_update: Vec<(Mod, String)> = index.mods.into_iter().filter_map(|i| {
         match i.platform {
             ModPlatform::Modrinth => {
-                let latest_hash = latest_mr_versions.get(&i.version)?.files.iter().find(|f| f.primary).unwrap().hashes.sha1.to_owned();
-                if latest_hash != i.version {
-                    return Some((i, latest_hash));
+                let latest_version = latest_mr_versions.values().find(|v| v.project_id == i.id).unwrap();
+                if latest_version.id != i.version {
+                    return Some((i, latest_version.id.to_owned()));
                 }
             },
             ModPlatform::CurseForge => {

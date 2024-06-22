@@ -18,18 +18,17 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
     let progress = ProgressBar::new_spinner().with_message("Starting export");
     progress.enable_steady_tick(Duration::from_millis(100));
 
-    // get primary files from stored version hashes from modrinth
-    let mr_files: Vec<VersionFile> = MODRINTH
-        .get_versions_from_hashes(
+    // get primary files from stored versions from modrinth
+    let mr_verions = MODRINTH
+        .get_multiple_versions(
             mr_mods
-                .into_iter()
-                .map(|m| m.version)
-                .collect::<Vec<String>>(),
+                .iter()
+                .map(|m| m.version.as_str())
+                .collect::<Vec<&str>>()
+                .as_slice(),
         )
-        .await?
-        .into_iter()
-        .map(|v| primary_file(v.1.files))
-        .collect();
+        .await?;
+    let mr_files: Vec<VersionFile> =  mr_verions.into_iter().map(|v| primary_file(v.files)).collect();
 
     // map files into mrpack files
     let files = mr_files.into_iter().map(|f| super::File {
