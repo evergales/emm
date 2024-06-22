@@ -90,14 +90,13 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
 
         // get version with latest publish date
         let latest_compatible_version = compatible_versions.into_iter().max_by_key(|v| v.date_published).unwrap();
-        let primary_file = latest_compatible_version.files.into_iter().find(|f| f.primary).unwrap();
         
         to_add.push(Mod {
             name: mr_mod.title,
             project_type: mr_mod.project_type.try_into()?,
             platform: ModPlatform::Modrinth,
             id: mr_mod.id,
-            version: primary_file.hashes.sha1,
+            version: latest_compatible_version.id,
             pinned: false,
         })
     }
