@@ -147,7 +147,7 @@ impl Display for ProjectType {
             match self {
                 ProjectType::Mod => "mod",
                 ProjectType::Datapack => "datapack",
-                ProjectType::Shader => "shader",
+                ProjectType::Shader => "shaderpack",
                 ProjectType::Resourcepack => "resourcepack",
             })
     }
