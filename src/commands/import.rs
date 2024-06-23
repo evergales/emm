@@ -9,5 +9,10 @@ pub enum Commands {
         /// Path to mrpack file
         #[arg(required = true)]
         path: PathBuf
+    },
+
+    Curseforge {
+        #[arg(required = true)]
+        path: PathBuf
     }
 }

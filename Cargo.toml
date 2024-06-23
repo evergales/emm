@@ -26,6 +26,7 @@ toml = "0.8.12"
 url = { version = "2.5.0", features = ["serde"] }
 walkdir = "2.5.0"
 zip = "2.1.0"
+sha1 = "0.10.6"
 
 [profile.release]
 lto = true

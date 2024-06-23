@@ -65,6 +65,7 @@ async fn main() {
         },
         Commands::Import { subcommand } => match subcommand {
             commands::import::Commands::Modrinth { path } => modrinth::import::import_modrinth(path).await,
+            commands::import::Commands::Curseforge { path } => curseforge::import::import_curseforge(path).await
         }
         Commands::Export { subcommand } => match subcommand {
             commands::export::Commands::Modrinth { overrides_path } => modrinth::export::export_modrinth(overrides_path).await,
