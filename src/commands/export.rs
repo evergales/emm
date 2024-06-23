@@ -8,5 +8,11 @@ pub enum Commands {
     Modrinth {
         /// Path to mrpack overrides
         overrides_path: Option<PathBuf>
+    },
+
+    /// Export to a curseforge pack
+    Curseforge {
+        /// Path to overrides
+        overrides_path: Option<PathBuf>
     }
 }

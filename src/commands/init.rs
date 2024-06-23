@@ -40,8 +40,6 @@ pub async fn pick_game_version() -> Result<String> {
 }
 
 async fn pick_loader() -> Result<ModLoader> {
-    // LexForge will likely be unavailable in 1.21 and generally isnt recommended
-    // todo: check for game_version and disallow picking if game_version is above 1.21
     let loader_picker = Select::new()
         .with_prompt("Choose the modloader")
         .items(&["Fabric", "Quilt", "Forge", "NeoForge"])

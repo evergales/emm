@@ -8,6 +8,7 @@ pub mod migrate;
 pub mod export;
 pub mod import;
 pub mod modrinth;
+pub mod curseforge;
 
 use clap::Subcommand;
 use clap_complete::Shell;
