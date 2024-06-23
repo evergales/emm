@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::{sync::Semaphore, task::JoinSet};
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::{structs::{Index, Mod, ModLoader, ModPlatform, Modpack}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, Mod, ModLoader, ModPlatform, Modpack, ProjectType}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
 
 use super::{FileHashes, Game, Metadata, PackDependency};
 
@@ -27,18 +27,24 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
                 .as_slice(),
         )
         .await?;
-    let mr_files: Vec<VersionFile> =  mr_verions.into_iter().map(|v| primary_file(v.files)).collect();
+    
+    let index_mr_mods: Vec<Mod> = index.mods.clone().into_iter().filter(|m| matches!(m.platform, ModPlatform::Modrinth)).collect();
+    let mr_files: Vec<(&ProjectType, VersionFile)> =  mr_verions.into_iter().map(|v| {
+        let project_type = &index_mr_mods.iter().find(|m| m.id == v.project_id).unwrap().project_type;
+        let file = primary_file(v.files);
+        (project_type, file)
+    }).collect();
 
     // map files into mrpack files
     let files = mr_files.into_iter().map(|f| super::File {
-        path: format!("mods/{}", f.filename).into(),
+        path: format!("{}s/{}", f.0, f.1.filename).into(),
         hashes: FileHashes {
-            sha1: f.hashes.sha1,
-            sha512: f.hashes.sha512,
+            sha1: f.1.hashes.sha1,
+            sha512: f.1.hashes.sha512,
         },
         env: None,
-        downloads: vec![f.url],
-        file_size: f.size,
+        downloads: vec![f.1.url],
+        file_size: f.1.size,
     })
     .collect();
 
