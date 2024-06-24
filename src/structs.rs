@@ -156,19 +156,21 @@ impl Display for ProjectType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Modrinthmod {
     pub name: String,
+    pub project_type: ProjectType,
     pub id: String,
     pub version: String
 }
 
 impl From<Mod> for Modrinthmod {
     fn from(value: Mod) -> Self {
-        Self { name: value.name, id: value.id, version: value.version }
+        Self { name: value.name, project_type: value.project_type, id: value.id, version: value.version }
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CurseforgeMod {
     pub name: String,
+    pub project_type: ProjectType,
     pub id: i32,
     pub version: i32
 }
@@ -178,6 +180,7 @@ impl TryFrom<Mod> for CurseforgeMod {
     fn try_from(value: Mod) -> std::result::Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
+            project_type: value.project_type,
             id: value.id.parse::<i32>().map_err(|_| Error::Parse(format!("curseforge id: {} to Integer", value.id)))?,
             version: value.version.parse::<i32>().map_err(|_| Error::Parse(format!("curseforge version id: {} to Integer", value.version)))?
         })

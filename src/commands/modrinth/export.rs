@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::{sync::Semaphore, task::JoinSet};
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::{structs::{Index, Mod, ModLoader, ModPlatform, Modpack, ProjectType}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, ModLoader, Modpack, ProjectType}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
 
 use super::{FileHashes, Game, Metadata, PackDependency};
 
@@ -28,9 +28,8 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         )
         .await?;
     
-    let index_mr_mods: Vec<Mod> = index.mods.clone().into_iter().filter(|m| matches!(m.platform, ModPlatform::Modrinth)).collect();
     let mr_files: Vec<(&ProjectType, VersionFile)> =  mr_verions.into_iter().map(|v| {
-        let project_type = &index_mr_mods.iter().find(|m| m.id == v.project_id).unwrap().project_type;
+        let project_type = &mr_mods.iter().find(|m| m.id == v.project_id).unwrap().project_type;
         let file = primary_file(v.files);
         (project_type, file)
     }).collect();
@@ -72,15 +71,14 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         progress.set_message("Downloading curseforge mods");
         fs::create_dir(&cache_dir)?;
     
-        let files = CURSEFORGE.get_files(cf_mods.into_iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
+        let files = CURSEFORGE.get_files(cf_mods.iter().map(|m| m.version).collect::<Vec<i32>>()).await?;
         let permits = Arc::new(Semaphore::new(10)); // limit file downloads to 10 at a time
-        let index_cf_mods: Vec<Mod> = index.mods.into_iter().filter(|m| matches!(m.platform, ModPlatform::CurseForge)).collect();
 
         let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
         for file in files {
             let cache_dir = cache_dir.clone();
             let permits = permits.clone();
-            let project_type = &index_cf_mods.iter().find(|m| m.id == file.mod_id.to_string()).unwrap().project_type;
+            let project_type = &cf_mods.iter().find(|m| m.id == file.mod_id).unwrap().project_type;
             let folder_name = format!("{}s", project_type);
             if !&cache_dir.join(&folder_name).is_dir() {
                 fs::create_dir(&cache_dir.join(&folder_name))?;

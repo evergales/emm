@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::{sync::Semaphore, task::JoinSet};
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::{structs::{Index, Mod, ModPlatform, Modpack}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, Modpack}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
 
 use super::{CfFile, CfManifest, CfMinecraft, CfModLoader};
 
@@ -74,13 +74,12 @@ pub async fn export_curseforge(overrides_path: Option<PathBuf>) -> Result<()> {
             .collect();
         
         let permits = Arc::new(Semaphore::new(10)); // limit file downloads to 10 at a time
-        let index_mr_mods: Vec<Mod> = index.mods.into_iter().filter(|m| matches!(m.platform, ModPlatform::Modrinth)).collect();
 
         let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
         for file in files {
             let cache_dir = cache_dir.clone();
             let permits = permits.clone();
-            let project_type = &index_mr_mods.iter().find(|m| m.id == file.1).unwrap().project_type;
+            let project_type = &mr_mods.iter().find(|m| m.id == file.1).unwrap().project_type;
             let folder_name = format!("{}s", project_type);
             if !&cache_dir.join(&folder_name).is_dir() {
                 fs::create_dir(&cache_dir.join(&folder_name))?;
