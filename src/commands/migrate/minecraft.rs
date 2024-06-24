@@ -4,7 +4,7 @@ use dialoguer::Confirm;
 use tokio::task::JoinSet;
 
 use crate::{
-    commands::init::pick_game_version, structs::{Index, Modpack}, util::{get_latest_loader_version, join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
+    commands::init::pick_game_version, structs::{Index, Modpack, ProjectType}, util::{get_latest_loader_version, join_all, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn migrate_minecraft() -> Result<()> {
@@ -23,11 +23,16 @@ pub async fn migrate_minecraft() -> Result<()> {
         let incompatible_mods = Arc::clone(&incompatible_mods);
 
         let task = async move {
-            let versions = MODRINTH.list_versions(&m.id).await?;
-            if !versions.into_iter().any(|v| {
-                v.game_versions.contains(&mc_version)
-                && v.loaders.contains(&modpack.versions.mod_loader.to_string().to_lowercase())
-            }) {
+            let loaders = &[&*modpack.versions.mod_loader.to_string().to_lowercase()];
+            let compatible_versions = MODRINTH
+                .list_versions_filtered(
+                    &m.id,
+                    if matches!(m.project_type, ProjectType::Mod) { Some(loaders) } else { None },
+                    Some(&[&mc_version]),
+                    None,
+                )
+                .await?;
+            if compatible_versions.is_empty() {
                 incompatible_mods.lock().unwrap().push(m.name)
             };
 
@@ -49,7 +54,7 @@ pub async fn migrate_minecraft() -> Result<()> {
             let files = CURSEFORGE.get_mod_files(m.id).await?;
             if !files.into_iter().any(|f| 
                 f.is_available
-                && f.game_versions.contains(&modpack.versions.mod_loader.to_string())
+                && if matches!(m.project_type, ProjectType::Mod) { f.game_versions.contains(&modpack.versions.mod_loader.to_string()) } else { true }
                 && f.game_versions.contains(&mc_version)
             ) {
                 incompatible_mods.lock().unwrap().push(m.name)

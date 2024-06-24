@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::task::JoinSet;
 
 use crate::{
-    structs::{Index, Mod, ModPlatform, Modpack}, util::{primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
+    structs::{Index, Mod, ModPlatform, Modpack}, util::{join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH
 };
 
 pub async fn update() -> Result<()> {
@@ -55,7 +55,7 @@ pub async fn update() -> Result<()> {
         progress.set_message("Finding curseforge updates");
     }
     for cf_mod in index_cf_mods {
-        let collected_cf_versions = Arc::clone(&collected_cf_versions);
+        let collected_cf_versions = collected_cf_versions.clone();
         let modpack = modpack.clone();
         
         let task = async move {
@@ -78,9 +78,7 @@ pub async fn update() -> Result<()> {
         tasks.spawn(task);
     };
 
-    while let Some(res) = tasks.join_next().await {
-        let _ = res?;
-    }
+    join_all(tasks).await?;
 
     // get out of the Arc<Mutex<>>
     let latest_cf_versions = collected_cf_versions.lock().unwrap().clone();
@@ -98,14 +96,11 @@ pub async fn update() -> Result<()> {
                 }
             },
             ModPlatform::CurseForge => {
-                if latest_cf_versions.iter().any(|v| v.id == i.version.parse::<i32>().unwrap()) {
-                    return None;
+                let id = i.id.parse::<i32>().unwrap();
+                let latest_version = latest_cf_versions.iter().find(|v| v.mod_id == id).unwrap();
+                if latest_version.id == i.version.parse::<i32>().unwrap() {
+                    return Some((i, latest_version.id.to_string()));
                 }
-
-                return latest_cf_versions
-                    .iter()
-                    .find(|v| v.mod_id == i.id.parse::<i32>().unwrap())
-                    .map(|version| (i, version.id.to_string()))
             },
 
         }

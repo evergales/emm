@@ -14,10 +14,9 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
 
     let mut to_add: Vec<Mod> = Vec::new();
 
-    let mods_len = mods.len();
-    for (idx, id) in mods.into_iter().enumerate() {
-        if mods_len > 1 {
-            progress.set_message(format!("Adding mods {}/{}", idx, mods_len));
+    for (idx, id) in mods.iter().enumerate() {
+        if mods.len() > 1 {
+            progress.set_message(format!("Adding mods {}/{}", idx, mods.len()));
         }
 
         // handle curseforge mods
@@ -59,7 +58,7 @@ pub async fn add_mod(mods: Vec<String>, ignore_version: bool, ignore_loader: boo
         }
 
         // handle modrinth mods
-        let mr_mod = match get_project_with_search(&id, &modpack, ignore_version, ignore_loader, &progress).await? {
+        let mr_mod = match get_project_with_search(id, &modpack, ignore_version, ignore_loader, &progress).await? {
             Some(m) => m,
             None => continue,
         };
