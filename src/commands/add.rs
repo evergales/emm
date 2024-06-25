@@ -67,7 +67,13 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     }
 
     join_all(tasks).await?;
-    let dependencies = dependencies.lock().unwrap().clone();
+    let mut dependencies = dependencies.lock().unwrap().clone();
+
+    // remove dependencies already present in index
+    // to not show "already in modpack" for dependencies
+    let index_mods = Index::read()?.mods;
+    dependencies.retain(|d| !index_mods.contains(d));
+    
     mods.extend(dependencies);
 
     mods.sort_by_key(|m| m.name.to_owned());
