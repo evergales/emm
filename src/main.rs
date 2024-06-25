@@ -20,6 +20,9 @@ lazy_static! {
 #[derive(thiserror::Error, Debug)]
 #[error("{}", .0)]
 pub enum Error {
+    #[error("Invalid mod id")]
+    InvalidId,
+
     #[error("Error while parsing, {0}")]
     Parse(String),
 
@@ -54,7 +57,7 @@ async fn main() {
 
     if let Err(err) = match args.command {
         Commands::Init => commands::init::init().await,
-        Commands::Add { mods, ignore_version, ignore_loader } => commands::add::add_mod(mods, ignore_version, ignore_loader).await,
+        Commands::Add { ids, version } => commands::add::add_mods(ids, version).await,
         Commands::Remove { mods } => commands::remove::remove_mod(mods).await,
         Commands::Pin { m, version } => commands::pin::pin(m, version).await,
         Commands::Unpin { m } => commands::unpin::unpin(m).await,

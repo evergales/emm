@@ -22,16 +22,13 @@ pub enum Commands {
     #[command(alias = "a")]
     Add {
         /// List of mod ids/slugs or names you want to search
+        /// List of Modrinth ids/slugs/names to search and Curseforge ids
         #[arg(required = true)]
-        mods: Vec<String>,
+        ids: Vec<String>,
 
-        /// ignore minecraft version when checking compatability
-        #[arg(long, short = 'V')]
-        ignore_version: bool,
-
-        /// ignore mod loader when checking compatability
-        #[arg(long, short = 'L')]
-        ignore_loader: bool
+        /// The specific version id to use, ignores compatability checks
+        #[arg(long)]
+        version: Option<String>,
     },
 
     /// Remove a mod from the current profile (rm/r)
