@@ -14,6 +14,11 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     let progress = ProgressBar::new_spinner().with_message("Adding mods");
     progress.enable_steady_tick(Duration::from_millis(100));
 
+    if ids.len() > 1 && version.is_some() {
+        println!("Only use the --version flag when adding a single mod");
+        return Ok(());
+    }
+
     let mut mods = Vec::new();
     let mut invalid_ids = Vec::new();
 
