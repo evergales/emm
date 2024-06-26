@@ -68,7 +68,6 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
 
     join_all(tasks).await?;
     let mut dependencies = dependencies.lock().await.clone();
-    println!("{:#?}", dependencies);
 
     // remove dependencies already present in index
     // to not show "already in modpack" for dependencies
