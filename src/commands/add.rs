@@ -1,11 +1,11 @@
-use std::{sync::{Arc, Mutex}, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use async_recursion::async_recursion;
 use dialoguer::Select;
 use ferinth::structures::{project::ProjectType as MRProjectType, search::{Facet, Sort}, version::{Dependency, DependencyType, Version}};
 use furse::structures::file_structs::{File, FileDependency, FileRelationType};
 use indicatif::ProgressBar;
-use tokio::{task::JoinSet, try_join};
+use tokio::{sync::Mutex, task::JoinSet, try_join};
 
 use crate::{structs::{Index, Mod, ModPlatform, Modpack, ProjectType}, util::join_all, Error, Result, CURSEFORGE, MODRINTH};
 
@@ -51,15 +51,15 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     progress.set_message("Finding dependencies");
 
     let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
+
+    // use tokio::sync::Mutex to hold MutexGuard across .await
     let dependencies = Arc::new(Mutex::new(Vec::new()));
     for m in mods.clone() {
         let modpack = modpack.clone();
         let dependencies = dependencies.clone();
 
         let task = async move {
-            let deps = get_dependencies(&m, &modpack).await?;
-            dependencies.lock().unwrap().extend(deps);
-
+            get_dependencies(&m, &dependencies, &modpack).await?;
             Ok(())
         };
 
@@ -67,7 +67,8 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     }
 
     join_all(tasks).await?;
-    let mut dependencies = dependencies.lock().unwrap().clone();
+    let mut dependencies = dependencies.lock().await.clone();
+    println!("{:#?}", dependencies);
 
     // remove dependencies already present in index
     // to not show "already in modpack" for dependencies
@@ -75,9 +76,6 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     dependencies.retain(|d| !index_mods.contains(d));
     
     mods.extend(dependencies);
-
-    mods.sort_by_key(|m| m.name.to_owned());
-    mods.dedup_by_key(|m| m.name.to_owned());
 
     progress.finish_and_clear();
     add_mods_to_index(mods).await?;
@@ -239,16 +237,26 @@ async fn search_mods(ids: Vec<String>, modpack: &Modpack) -> Result<Vec<Mod>> {
 }
 
 #[async_recursion]
-async fn get_dependencies(idx_mod: &Mod, modpack: &Modpack) -> Result<Vec<Mod>> {
-    let mut mods = Vec::new();
+async fn get_dependencies(idx_mod: &Mod, dependencies: &Arc<Mutex<Vec<Mod>>>, modpack: &Modpack) -> Result<()> {
     match idx_mod.platform {
         ModPlatform::Modrinth => {
-            let dependencies = MODRINTH.get_version(&idx_mod.version).await?.dependencies;
-            let required_dependencies: Vec<Dependency> = dependencies.into_iter().filter(|d| matches!(d.dependency_type, DependencyType::Required)).collect();
+            let mod_dependencies = MODRINTH.get_version(&idx_mod.version).await?.dependencies;
+            let required_dependencies: Vec<Dependency> = mod_dependencies.into_iter().filter(|d| matches!(d.dependency_type, DependencyType::Required)).collect();
             for dep in required_dependencies {
-                let mr_mod = get_mod(&dep.project_id.unwrap(), &None, modpack).await?;
-                mods.push(mr_mod.to_owned());
-                mods.extend(get_dependencies(&mr_mod, modpack).await?);
+                if dep.project_id.is_none() {
+                    continue;
+                }
+
+                // avoid rechecking a dependency multiple times
+                let mut dependencies_lock = dependencies.lock().await;
+                if !dependencies_lock.iter().any(|m| &m.id == dep.project_id.as_ref().unwrap()) {
+                    // modrinth optionally provides version ids on dependencies so use those
+                    let mr_mod = get_mod(&dep.project_id.unwrap(), &dep.version_id, modpack).await?;
+                    dependencies_lock.push(mr_mod.to_owned());
+                    drop(dependencies_lock);
+
+                    get_dependencies(&mr_mod, dependencies, modpack).await?;
+                }
             }
         },
         ModPlatform::CurseForge => {
@@ -257,16 +265,22 @@ async fn get_dependencies(idx_mod: &Mod, modpack: &Modpack) -> Result<Vec<Mod>> 
             idx_mod.version.parse::<i32>().unwrap()
             ).await?;
 
-            let dependencies: Vec<FileDependency> = file.dependencies.into_iter().filter(|f| matches!(f.relation_type, FileRelationType::RequiredDependency)).collect();
+            let mod_dependencies: Vec<FileDependency> = file.dependencies.into_iter().filter(|f| matches!(f.relation_type, FileRelationType::RequiredDependency)).collect();
 
-            for dep in dependencies {
-                let cf_mod = get_mod(&dep.mod_id.to_string(), &None, modpack).await?;
-                mods.push(cf_mod.to_owned());
-                mods.extend(get_dependencies(&cf_mod, modpack).await?);
+            for dep in mod_dependencies {
+                // avoid rechecking a dependency multiple times
+                let mut dependencies_lock = dependencies.lock().await;
+                if !dependencies_lock.iter().any(|m| m.id == dep.mod_id.to_string()) {
+                    let cf_mod = get_mod(&dep.mod_id.to_string(), &None, modpack).await?;
+                    dependencies_lock.push(cf_mod.to_owned());
+                    drop(dependencies_lock);
+
+                    get_dependencies(&cf_mod, dependencies, modpack).await?;
+                }
             }
 
         },
     }
 
-    Ok(mods)
+    Ok(())
 }
