@@ -56,7 +56,7 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     let index_mods = Index::read()?.mods;
     let checked_ids = Arc::new(Mutex::new(
         // use index for checked ids as default
-        index_mods.iter().map(|m| m.id.clone()).collect()
+        index_mods.into_iter().map(|m| m.id).collect()
     ));
     let dependencies = Arc::new(Mutex::new(Vec::new()));
     
