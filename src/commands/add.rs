@@ -53,8 +53,13 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
 
     // checked_ids are needed to not block other threads from pushing to deps while 1 is waiting for a response
+    let index_mods = Index::read()?.mods;
+    let checked_ids = Arc::new(Mutex::new(
+        // use index for checked ids as default
+        index_mods.iter().map(|m| m.id.clone()).collect()
+    ));
     let dependencies = Arc::new(Mutex::new(Vec::new()));
-    let checked_ids = Arc::new(Mutex::new(Vec::new()));
+    
     for m in mods.clone() {
         let modpack = modpack.clone();
         let dependencies = dependencies.clone();
@@ -69,14 +74,7 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     }
 
     join_all(tasks).await?;
-    let mut dependencies = dependencies.lock().unwrap().clone();
-
-    // remove dependencies already present in index
-    // to not show "already in modpack" for dependencies
-    let index_mods = Index::read()?.mods;
-    dependencies.retain(|d| !index_mods.contains(d));
-    
-    mods.extend(dependencies);
+    mods.extend(dependencies.lock().unwrap().clone());
 
     progress.finish_and_clear();
     add_mods_to_index(mods).await?;
