@@ -62,6 +62,7 @@ async fn main() {
         Commands::Pin { m, version } => commands::pin::pin(m, version).await,
         Commands::Unpin { m } => commands::unpin::unpin(m).await,
         Commands::Update => commands::update::update().await,
+        Commands::List { verbose } => commands::list::list(verbose).await,
         Commands::Migrate { subcommand } => match subcommand {
             migrate::Commands::Loader => migrate::loader::migrate_loader().await,
             migrate::Commands::Minecraft => migrate::minecraft::migrate_minecraft().await,
