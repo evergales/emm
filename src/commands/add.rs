@@ -1,11 +1,11 @@
-use std::{sync::Arc, time::Duration};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use async_recursion::async_recursion;
 use dialoguer::Select;
 use ferinth::structures::{project::ProjectType as MRProjectType, search::{Facet, Sort}, version::{Dependency, DependencyType, Version}};
 use furse::structures::file_structs::{File, FileDependency, FileRelationType};
 use indicatif::ProgressBar;
-use tokio::{sync::Mutex, task::JoinSet, try_join};
+use tokio::{task::JoinSet, try_join};
 
 use crate::{structs::{Index, Mod, ModPlatform, Modpack, ProjectType}, util::join_all, Error, Result, CURSEFORGE, MODRINTH};
 
@@ -52,14 +52,16 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
 
     let mut tasks: JoinSet<crate::Result<()>> = JoinSet::new();
 
-    // use tokio::sync::Mutex to hold MutexGuard across .await
+    // checked_ids are needed to not block other threads from pushing to deps while 1 is waiting for a response
     let dependencies = Arc::new(Mutex::new(Vec::new()));
+    let checked_ids = Arc::new(Mutex::new(Vec::new()));
     for m in mods.clone() {
         let modpack = modpack.clone();
         let dependencies = dependencies.clone();
+        let checked_ids = checked_ids.clone();
 
         let task = async move {
-            get_dependencies(&m, &dependencies, &modpack).await?;
+            get_dependencies(&m, &dependencies, &checked_ids, &modpack).await?;
             Ok(())
         };
 
@@ -67,7 +69,7 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     }
 
     join_all(tasks).await?;
-    let mut dependencies = dependencies.lock().await.clone();
+    let mut dependencies = dependencies.lock().unwrap().clone();
 
     // remove dependencies already present in index
     // to not show "already in modpack" for dependencies
@@ -236,7 +238,7 @@ async fn search_mods(ids: Vec<String>, modpack: &Modpack) -> Result<Vec<Mod>> {
 }
 
 #[async_recursion]
-async fn get_dependencies(idx_mod: &Mod, dependencies: &Arc<Mutex<Vec<Mod>>>, modpack: &Modpack) -> Result<()> {
+async fn get_dependencies(idx_mod: &Mod, dependencies: &Arc<Mutex<Vec<Mod>>>, checked_ids: &Arc<Mutex<Vec<String>>>, modpack: &Modpack) -> Result<()> {
     match idx_mod.platform {
         ModPlatform::Modrinth => {
             let mod_dependencies = MODRINTH.get_version(&idx_mod.version).await?.dependencies;
@@ -247,15 +249,15 @@ async fn get_dependencies(idx_mod: &Mod, dependencies: &Arc<Mutex<Vec<Mod>>>, mo
                 }
 
                 // avoid rechecking a dependency multiple times
-                let mut dependencies_lock = dependencies.lock().await;
-                if !dependencies_lock.iter().any(|m| &m.id == dep.project_id.as_ref().unwrap()) {
-                    // modrinth optionally provides version ids on dependencies so use those
-                    let mr_mod = get_mod(&dep.project_id.unwrap(), &dep.version_id, modpack).await?;
-                    dependencies_lock.push(mr_mod.to_owned());
-                    drop(dependencies_lock);
-
-                    get_dependencies(&mr_mod, dependencies, modpack).await?;
+                if handle_checked(dep.project_id.as_ref().unwrap(), checked_ids) {
+                    continue;
                 }
+
+                // modrinth optionally provides version ids on dependencies so use those
+                let mr_mod = get_mod(&dep.project_id.unwrap(), &dep.version_id, modpack).await?;
+                dependencies.lock().unwrap().push(mr_mod.to_owned());
+                get_dependencies(&mr_mod, dependencies, checked_ids, modpack).await?;
+                
             }
         },
         ModPlatform::CurseForge => {
@@ -268,18 +270,32 @@ async fn get_dependencies(idx_mod: &Mod, dependencies: &Arc<Mutex<Vec<Mod>>>, mo
 
             for dep in mod_dependencies {
                 // avoid rechecking a dependency multiple times
-                let mut dependencies_lock = dependencies.lock().await;
-                if !dependencies_lock.iter().any(|m| m.id == dep.mod_id.to_string()) {
-                    let cf_mod = get_mod(&dep.mod_id.to_string(), &None, modpack).await?;
-                    dependencies_lock.push(cf_mod.to_owned());
-                    drop(dependencies_lock);
-
-                    get_dependencies(&cf_mod, dependencies, modpack).await?;
+                if handle_checked(&dep.mod_id.to_string(), checked_ids) {
+                    continue;
                 }
+
+                let cf_mod = get_mod(&dep.mod_id.to_string(), &None, modpack).await?;
+                dependencies.lock().unwrap().push(cf_mod.to_owned());
+
+                get_dependencies(&cf_mod, dependencies, checked_ids, modpack).await?;
+                
             }
 
         },
     }
 
     Ok(())
+}
+
+// either im stupid or rust is messy with Mutex and await together
+// using another non-async function to lock the mutex to not have a "held across await" error
+fn handle_checked(id: &String, checked_ids: &Arc<Mutex<Vec<String>>>) -> bool {
+    let mut checked_lock = checked_ids.lock().unwrap();
+    match checked_lock.contains(id) {
+        true => true,
+        false => {
+            checked_lock.push(id.to_owned());
+            false
+        },
+    }
 }
