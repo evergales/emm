@@ -4,6 +4,7 @@ pub mod remove;
 pub mod update;
 pub mod pin;
 pub mod unpin;
+pub mod list;
 pub mod migrate;
 pub mod export;
 pub mod import;
@@ -59,6 +60,11 @@ pub enum Commands {
         #[arg(name="mod")]
         // A mod name/id you want to unpin
         m: String
+    },
+
+    List {
+        #[arg(long, short = 'v')]
+        verbose: bool
     },
 
     /// Import modpack from another format

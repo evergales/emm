@@ -102,6 +102,16 @@ pub enum ModPlatform {
     CurseForge,
 }
 
+impl Display for ModPlatform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", 
+            match self {
+                ModPlatform::Modrinth => "Modrinth",
+                ModPlatform::CurseForge => "Curseforge",
+            })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectType {
