@@ -55,8 +55,10 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     // checked_ids are needed to not block other threads from pushing to deps while 1 is waiting for a response
     let index_mods = Index::read()?.mods;
     let checked_ids = Arc::new(Mutex::new(
-        // use index for checked ids as default
-        index_mods.into_iter().map(|m| m.id).collect()
+        // use index & added mods for checked ids as default
+        index_mods.into_iter().map(|m| m.id)
+            .chain(mods.iter().map(|m| m.id.clone()))
+            .collect()
     ));
     let dependencies = Arc::new(Mutex::new(Vec::new()));
     
