@@ -76,7 +76,7 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     }
 
     join_all(tasks).await?;
-    mods.extend(dependencies.lock().unwrap().clone());
+    mods.extend(Arc::try_unwrap(dependencies).unwrap().into_inner().unwrap());
 
     progress.finish_and_clear();
     add_mods_to_index(mods).await?;

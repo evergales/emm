@@ -81,8 +81,7 @@ pub async fn update() -> Result<()> {
     join_all(tasks).await?;
 
     // get out of the Arc<Mutex<>>
-    let latest_cf_versions = collected_cf_versions.lock().unwrap().clone();
-    drop(collected_cf_versions);
+    let latest_cf_versions = Arc::try_unwrap(collected_cf_versions).unwrap().into_inner().unwrap();
 
     progress.finish_and_clear();
 
