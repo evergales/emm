@@ -1,13 +1,13 @@
 use dialoguer::Select;
 
-use crate::{structs::{ModLoader, Modpack}, util::get_compatible_loader_versions, Result};
+use crate::{structs::{ModLoader, Modpack}, util::versions::get_compatible_loader_versions, Result};
 
 pub async fn migrate_loader() -> Result<()> {
     let mut modpack = Modpack::read()?;
     let mut versions = get_compatible_loader_versions(&modpack.versions.mod_loader, &modpack.versions.minecraft).await?;
 
     // fabric/quilt maven versions are ordered [oldest..newest] reverse it before showing select menu
-    if matches!(modpack.versions.mod_loader, ModLoader::Fabric | ModLoader::Quilt) {
+    if matches!(modpack.versions.mod_loader, ModLoader::Forge | ModLoader::NeoForge) {
         versions.reverse();
     }
 
