@@ -59,7 +59,9 @@ async fn main() {
     let args = Args::parse();
 
     if let Err(err) = match args.command {
-        Commands::Init => commands::init::init().await,
+        Commands::Init { name, description, authors, latest, loader, latest_snapshot, show_snapshots } => {
+            commands::init::init(name, description, authors, latest, loader, latest_snapshot, show_snapshots).await
+        },
         Commands::Add { ids, version } => commands::add::add_mods(ids, version).await,
         Commands::Remove { mods } => commands::remove::remove_mod(mods).await,
         Commands::Pin { m, version } => commands::pin::pin(m, version).await,
