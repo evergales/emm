@@ -197,8 +197,9 @@ impl TryFrom<Mod> for CurseforgeMod {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
+#[clap(rename_all = "lowercase")]
 pub enum ModLoader {
     Fabric,
     Quilt,

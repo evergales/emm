@@ -9,7 +9,7 @@ use crate::{
 
 pub async fn migrate_minecraft() -> Result<()> {
     let mut modpack = Modpack::read()?;
-    let mc_version = pick_game_version().await?;
+    let mc_version = pick_game_version(false).await?;
     let loader_version = get_latest_loader_version(&modpack.versions.mod_loader, &modpack.versions.minecraft).await?;
 
     let index = Index::read()?;

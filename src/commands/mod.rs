@@ -14,10 +14,39 @@ pub mod curseforge;
 use clap::Subcommand;
 use clap_complete::Shell;
 
+use crate::structs::ModLoader;
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Create a new modpack in the current folder
-    Init,
+    Init {
+        /// The name of your modpack
+        #[arg(long, short = 'n')]
+        name: Option<String>,
+
+        /// A short description of your modpack, put in "quotes"
+        #[arg(long, short = 'd')]
+        description: Option<String>,
+
+        /// The authors of this modpack
+        #[arg(long, short = 'a')]
+        authors: Option<Vec<String>>,
+
+        /// Use the latest minecraft release
+        #[arg(long, short = 'l')]
+        latest: bool,
+
+        #[arg(long, short = 'L')]
+        loader: Option<ModLoader>,
+
+        /// Use the latest minecraft snapshot
+        #[arg(long, visible_alias = "ls")]
+        latest_snapshot: bool,
+
+        /// Show snapshots in version select
+        #[arg(long, short = 's', visible_alias = "snapshots")]
+        show_snapshots: bool
+    },
 
     /// Add a mod to the current profile
     #[command(alias = "a")]

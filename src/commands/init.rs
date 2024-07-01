@@ -1,29 +1,57 @@
 use dialoguer::{Input, Select};
 
-use crate::{structs::{ModLoader, Modpack}, util::versions::{get_latest_loader_version, minecraft::{list_mc_versions, VersionType}}, Result};
+use crate::{structs::{ModLoader, Modpack}, util::versions::{get_latest_loader_version, minecraft::{get_latest_release, get_latest_snapshot, list_mc_versions, VersionType}}, Result};
 
-pub async fn init() -> Result<()> {
+pub async fn init(name: Option<String>, description: Option<String>, authors: Option<Vec<String>>, latest: bool, loader: Option<ModLoader>, latest_snapshot: bool, show_snapshots: bool) -> Result<()> {
     if Modpack::read().is_ok() {
         println!("This folder already has a modpack! \nrun `emm help` for help");
         return Ok(());
     }
 
-    let modpack_name: String = Input::new()
-        .with_prompt("Name your modpack")
-        .interact_text()?;
-    
-    let modpack_game_version = pick_game_version().await?;
-    let modpack_loader = pick_loader().await?;
+    let modpack_name: String = match name {
+        Some(name) => name,
+        None => {
+            Input::new()
+            .with_prompt("Name your modpack")
+            .interact_text()?
+        },
+    };
+   
+    let modpack_game_version = if latest {
+        get_latest_release().await?
+    } else if latest_snapshot {
+        get_latest_snapshot().await?
+    } else {
+        pick_game_version(show_snapshots).await?
+    };
+
+    let modpack_loader = match loader {
+        Some(loader) => loader,
+        None => pick_loader().await?,
+    };
 
     let loader_version = get_latest_loader_version(&modpack_loader, &modpack_game_version).await?;
 
-    Modpack::write(&Modpack::new(modpack_name, vec!["you!".to_string()], Some("my awesome modpack!".to_string()), "0.1.0".into(), modpack_game_version, modpack_loader, loader_version))?;
+    Modpack::write(&Modpack::new(
+        modpack_name.clone(),
+        if authors.is_some() { authors.unwrap() } else {vec!["you!".to_owned()]},
+        Some(description.unwrap_or(format!("the {} pack!", modpack_name))),
+        "0.1.0".into(),
+        modpack_game_version,
+        modpack_loader,
+        loader_version
+    ))?;
 
     Ok(())
 }
 
-pub async fn pick_game_version() -> Result<String> {
-    let versions: Vec<String> = list_mc_versions(Some(VersionType::Release)).await?;
+pub async fn pick_game_version(snapshots: bool) -> Result<String> {
+    let filter = match snapshots {
+        false => Some(VersionType::Release),
+        true => None,
+    };
+
+    let versions: Vec<String> = list_mc_versions(filter).await?;
 
     let game_version = Select::new()
         .with_prompt("Choose the game version")

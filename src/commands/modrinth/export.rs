@@ -5,7 +5,7 @@ use indicatif::ProgressBar;
 use tokio::{sync::Semaphore, task::JoinSet};
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-use crate::{structs::{Index, ModLoader, Modpack, ProjectType}, util::{add_recursively, download_file, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{Index, ModLoader, Modpack, ProjectType}, util::{files::{add_recursively, download_file}, join_all, primary_file, seperate_mods_by_platform}, Result, CURSEFORGE, MODRINTH};
 
 use super::{FileHashes, Game, Metadata, PackDependency};
 
