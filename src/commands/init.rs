@@ -1,6 +1,6 @@
 use dialoguer::{Input, Select};
 
-use crate::{structs::{ModLoader, Modpack}, util::get_latest_loader_version, Result, MODRINTH};
+use crate::{structs::{ModLoader, Modpack}, util::versions::{get_latest_loader_version, minecraft::{list_mc_versions, VersionType}}, Result};
 
 pub async fn init() -> Result<()> {
     if Modpack::read().is_ok() {
@@ -23,13 +23,7 @@ pub async fn init() -> Result<()> {
 }
 
 pub async fn pick_game_version() -> Result<String> {
-    let versions: Vec<String> = MODRINTH
-        .list_game_versions()
-        .await?
-        .into_iter()
-        .filter(|v| v.major) // no way to pick snapshots yet
-        .map(|v| v.version)
-        .collect();
+    let versions: Vec<String> = list_mc_versions(Some(VersionType::Release)).await?;
 
     let game_version = Select::new()
         .with_prompt("Choose the game version")

@@ -29,6 +29,9 @@ pub enum Error {
     #[error("The folder you're in doesnt have a modpack, create one with emm init")]
     Uninitialized,
 
+    #[error("{0} loader has no available versions for {1}")]
+    NoLoaderSupport(String, String),
+
     #[error("{0}")]
     Other(String),
 
