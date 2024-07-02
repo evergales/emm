@@ -97,7 +97,7 @@ pub async fn update() -> Result<()> {
             ModPlatform::CurseForge => {
                 let id = i.id.parse::<i32>().unwrap();
                 let latest_version = latest_cf_versions.iter().find(|v| v.mod_id == id).unwrap();
-                if latest_version.id == i.version.parse::<i32>().unwrap() {
+                if latest_version.id != i.version.parse::<i32>().unwrap() {
                     return Some((i, latest_version.id.to_string()));
                 }
             },
