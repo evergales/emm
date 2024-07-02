@@ -1,4 +1,4 @@
-use crate::{structs::{CurseforgeMod, Index, ModPlatform, Modpack}, util::{mod_matches, primary_file}, Result, CURSEFORGE, MODRINTH};
+use crate::{structs::{CurseforgeMod, Index, ModPlatform, Modpack}, util::mod_matches, Result, CURSEFORGE, MODRINTH};
 
 pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
     let modpack = Modpack::read()?;
@@ -27,7 +27,7 @@ pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
                     return Ok(());
                 }
 
-                Some(primary_file(version.files).hashes.sha1)
+                Some(version.id)
             }
             ModPlatform::CurseForge => {
                 let cf_mod = CurseforgeMod::try_from(index_mod.to_owned())?;
