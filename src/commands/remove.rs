@@ -1,3 +1,5 @@
+use console::style;
+
 use crate::{structs::Index, util::mod_matches, Result};
 
 pub async fn remove_mod(mods: Vec<String>) -> Result<()> {
@@ -14,7 +16,7 @@ pub async fn remove_mod(mods: Vec<String>) -> Result<()> {
                 index.mods.remove(idx);
             },
             None => {
-                println!("{i} was not found in this modpack!");
+                println!("{}", style(i + "was not found in this modpack!").color256(166));
                 continue;
             },
         }

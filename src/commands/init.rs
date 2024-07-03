@@ -1,10 +1,11 @@
+use console::style;
 use dialoguer::{Input, Select};
 
 use crate::{structs::{ModLoader, Modpack}, util::versions::{get_latest_loader_version, minecraft::{get_latest_release, get_latest_snapshot, list_mc_versions, VersionType}}, Result};
 
 pub async fn init(name: Option<String>, description: Option<String>, authors: Option<Vec<String>>, latest: bool, loader: Option<ModLoader>, latest_snapshot: bool, show_snapshots: bool) -> Result<()> {
     if Modpack::read().is_ok() {
-        println!("This folder already has a modpack! \nrun `emm help` for help");
+        println!("{} \nrun `emm help` for help", style("This folder already has a modpack!").color256(166));
         return Ok(());
     }
 

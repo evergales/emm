@@ -463,6 +463,7 @@ dependencies = [
  "async-recursion",
  "clap",
  "clap_complete",
+ "console",
  "dialoguer",
  "ferinth",
  "furse",
