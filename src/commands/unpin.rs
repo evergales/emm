@@ -1,3 +1,5 @@
+use console::style;
+
 use crate::{structs::Index, util::mod_matches, Result};
 
 pub async fn unpin(mod_str: String) -> Result<()> {
@@ -13,7 +15,7 @@ pub async fn unpin(mod_str: String) -> Result<()> {
             index.mods[idx].pinned = false;
         },
         None => {
-            println!("Could not find {mod_str} in this modpack!")
+            println!("{}", style("Could not find".to_owned() + &mod_str + "in this modpack!").color256(166))
         },
     }
 

@@ -1,6 +1,7 @@
 use std::{sync::{Arc, Mutex}, time::Duration};
 
 use async_recursion::async_recursion;
+use console::style;
 use dialoguer::Select;
 use ferinth::structures::{project::ProjectType as MRProjectType, search::{Facet, Sort}, version::{Dependency, DependencyType, Version}};
 use furse::structures::file_structs::{File, FileDependency, FileRelationType};
@@ -15,7 +16,7 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     progress.enable_steady_tick(Duration::from_millis(100));
 
     if ids.len() > 1 && version.is_some() {
-        println!("Only use the --version flag when adding a single mod");
+        println!("{}", style("Only use the --version flag when adding a single mod").color256(166));
         return Ok(());
     }
 
@@ -23,7 +24,13 @@ pub async fn add_mods(ids: Vec<String>, version: Option<String>) -> Result<()> {
     let mut invalid_ids = Vec::new();
 
     for (idx, id) in ids.iter().enumerate() {
-        progress.set_message(format!("Adding mods {}/{}", idx + 1, ids.len()));
+        progress.set_message({
+            if ids.len() > 1 {
+                format!("Adding mods {}/{}", idx + 1, ids.len())
+            } else {
+                "Adding mod".to_owned()
+            }
+        });
 
         let res_mod = match get_mod(id, &version, &modpack).await {
             Ok(res) => res,
@@ -88,7 +95,7 @@ pub async fn add_mods_to_index(mods: Vec<Mod>) -> Result<()> {
     for m in mods {
         // checking the name as well so you cant add the same mod from both modrinth or curseforge
         if index.mods.iter().any(|idx_mod| idx_mod.name == m.name || *idx_mod.id == m.id) {
-            println!("{} is already in the modpack!", m.name);
+            println!("{}", style(m.name + "is already in the modpack").color256(166));
             continue;
         }
         println!("Adding {}", m.name);
@@ -119,7 +126,7 @@ async fn get_mod(id: &str, version: &Option<String>, modpack: &Modpack) -> Resul
                 ).collect::<Vec<File>>();
 
                 if compatibles.is_empty() {
-                    return Err(Error::Other(format!("No compatible versions found for mod: '{}'", cf_mod.name)));
+                    return Err(Error::Other(style(format!("No compatible versions found for mod: '{}'", cf_mod.name)).color256(166).to_string()));
                 }
 
                 (cf_mod, compatibles.into_iter().max_by_key(|f| f.file_date).unwrap())
@@ -153,7 +160,7 @@ async fn get_mod(id: &str, version: &Option<String>, modpack: &Modpack) -> Resul
 
                 match mr_mod.project_type {
                     MRProjectType::Modpack | MRProjectType::Plugin => {
-                        return Err(Error::Other(format!("Unable to add {} becaue its project type is unsupported", mr_mod.title)));
+                        return Err(Error::Other(style(format!("Unable to add {} becaue its project type is unsupported", mr_mod.title)).color256(166).to_string()));
                     },
                     _ => {}
                 }
@@ -164,7 +171,7 @@ async fn get_mod(id: &str, version: &Option<String>, modpack: &Modpack) -> Resul
                 ).collect();
 
                 if compatibles.is_empty() {
-                    return Err(Error::Other(format!("No compatible versions found for mod: '{}'", mr_mod.title)));
+                    return Err(Error::Other(style(format!("No compatible versions found for mod: '{}'", mr_mod.title)).color256(166).to_string()));
                 }
 
                 (mr_mod, compatibles.into_iter().max_by_key(|v| v.date_published).unwrap())

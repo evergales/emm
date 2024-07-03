@@ -1,3 +1,5 @@
+use console::style;
+
 use crate::{structs::{CurseforgeMod, Index, ModPlatform, Modpack}, util::mod_matches, Result, CURSEFORGE, MODRINTH};
 
 pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
@@ -7,7 +9,7 @@ pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
     let index_mod = match index.mods.iter().find(|m| mod_matches(m, &mod_str)) {
         Some(m) => m,
         None => {
-            println!("Could not find {mod_str} in this modpack!");
+            println!("{}", style("Could not find".to_owned() + &mod_str + "in this modpack!").color256(166));
             return Ok(());
         }
     };
@@ -23,7 +25,7 @@ pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
 
 
                 if !compatible {
-                    println!("The version id you provided is incompatible with your modpack");
+                    println!("{}", style("The version id you provided is incompatible with your modpack").color256(166));
                     return Ok(());
                 }
 
@@ -47,7 +49,7 @@ pub async fn pin(mod_str: String, version_id: Option<String>) -> Result<()> {
                 };
 
                 if !compatible {
-                    println!("The version id you provided is incompatible with your modpack");
+                    println!("{}", style("The version id you provided is incompatible with your modpack").color256(166));
                     return Ok(());
                 }
 
