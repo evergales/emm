@@ -465,9 +465,9 @@ dependencies = [
  "clap_complete",
  "console",
  "dialoguer",
- "ferinth",
  "furse",
  "indicatif",
+ "lazy-regex",
  "lazy_static",
  "reqwest",
  "serde",
@@ -517,22 +517,6 @@ name = "fastrand"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
-
-[[package]]
-name = "ferinth"
-version = "2.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e02ddb7dbc6a683bf0e53786279a3a621977609df68eedb3311d05a8de807eb"
-dependencies = [
- "chrono",
- "lazy-regex",
- "once_cell",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "url",
-]
 
 [[package]]
 name = "flate2"
