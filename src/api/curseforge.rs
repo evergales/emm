@@ -1,47 +1,55 @@
-use std::future::Future;
+use murmur2::murmur2;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
-    Client, Response,
+    Client, RequestBuilder, StatusCode,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
-const API_URL: &str = "api.curseforge.com";
+use crate::{
+    error::{Error, Result},
+    structs::pack::ModLoader,
+};
 
-#[derive(thiserror::Error, Debug)]
-pub enum CurseError {
-    #[error("{0}")]
-    Reqwest(#[from] reqwest::Error),
+const API_URL: &str = "https://api.curseforge.com";
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CurseResponse<T> {
+    data: T,
 }
-
-type Result<T> = std::result::Result<T, CurseError>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Mod {
-    id: i32,
-    game_id: i32,
-    name: String,
-    class_id: i32,
-    allow_mod_distribution: Option<bool>,
+    pub id: i32,
+    pub game_id: i32,
+    pub name: String,
+    pub class_id: Option<i32>,
+    pub allow_mod_distribution: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct File {
-    id: i32,
-    mod_id: i32,
-    file_name: String,
-    dependencies: Vec<FileDependency>
+    pub id: i32,
+    pub mod_id: i32,
+    pub is_available: bool,
+    pub file_name: String,
+    pub download_url: Option<String>,
+    pub game_versions: Vec<String>,
+    pub dependencies: Vec<FileDependency>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FileDependency {
-    mod_id: i32,
-    relation_type: FileRelationType
+    pub mod_id: i32,
+    pub relation_type: FileRelationType,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize_repr, Serialize_repr, Debug, Clone)]
+#[repr(u8)]
 pub enum FileRelationType {
     EmbeddedLibrary = 1,
     OptionalDependency = 2,
@@ -54,58 +62,91 @@ pub enum FileRelationType {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FingerprintMatches {
-    exact_matches: Vec<Match>
+    pub exact_matches: Vec<Match>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Match {
-    id: i32,
-    file: File,
+    pub id: i32,
+    pub file: File,
 }
 
 pub struct CurseAPI {
     client: Client,
 }
 impl CurseAPI {
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: &str) -> Self {
         let mut headers = HeaderMap::new();
-        headers.insert("x-api-key", HeaderValue::from_str(&api_key).unwrap());
+        headers.insert("x-api-key", HeaderValue::from_str(api_key).unwrap());
 
         CurseAPI {
             client: Client::builder().default_headers(headers).build().unwrap(),
         }
     }
 
-    async fn fetch<T, Fut>(&self, f: impl FnOnce() -> Fut) -> Result<T>
-    where
-        T: DeserializeOwned,
-        Fut: Future<Output = reqwest::Result<Response>>,
-    {
-        Ok(f().await?.error_for_status()?.json().await?)
+    async fn fetch<T: DeserializeOwned>(&self, f: impl FnOnce() -> RequestBuilder) -> Result<T> {
+        let res = f().send().await?;
+        if let Err(err) = res.error_for_status_ref() {
+            let err = match err.status().unwrap() {
+                StatusCode::NOT_FOUND => Error::NotFound(err.url().unwrap().to_string()),
+                _ => Error::Reqwest(err),
+            };
+
+            return Err(err);
+        }
+
+        let curse_response: CurseResponse<T> = res.json().await?;
+        Ok(curse_response.data)
     }
 
     async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T> {
-        self.fetch(|| self.client.get(url).send()).await
+        self.fetch(|| self.client.get(url)).await
+    }
+
+    async fn post<T, B>(&self, url: &str, body: &B) -> Result<T>
+    where
+        T: DeserializeOwned,
+        B: Serialize + ?Sized,
+    {
+        self.fetch(|| self.client.post(url).json(body)).await
+    }
+
+    pub async fn search(
+        &self,
+        query: &str,
+        game_version: &str,
+        mod_loader: &ModLoader,
+        page_size: &i32,
+    ) -> Result<Vec<Mod>> {
+        self.get(&format!("{API_URL}/v1/search?gameId=432&classId=6&searchFilter={query}&gameVersion={game_version}&modLoaderType={mod_loader}&pageSize={page_size}")).await
     }
 
     pub async fn get_mod(&self, id: &i32) -> Result<Mod> {
         self.get(&format!("{API_URL}/v1/mods/{id}")).await
     }
 
-    pub async fn get_mods(&self, ids: Vec<i32>) -> Result<Mod> {
+    pub async fn get_mod_by_slug(&self, slug: &str) -> Result<Mod> {
+        // gameId=432 == minecraft
+        // classId=6 == mod
+        let res: Vec<Mod> = self
+            .get(&format!(
+                "{API_URL}/v1/mods/search?gameId=432&classId=6&slug={slug}"
+            ))
+            .await?;
+        match res.is_empty() {
+            true => Err(Error::InvalidId(slug.to_owned())),
+            false => Ok(res[0].clone()),
+        }
+    }
+
+    pub async fn get_mods(&self, ids: Vec<i32>) -> Result<Vec<Mod>> {
         #[derive(Serialize)]
         #[serde(rename_all = "camelCase")]
         struct Body {
             mod_ids: Vec<i32>,
         }
 
-        self.fetch(|| {
-            self.client
-                .post(format!("{API_URL}/v1/mods"))
-                .json(&Body { mod_ids: ids })
-                .send()
-        })
-        .await
+        self.post(&format!("{API_URL}/v1/mods"), &Body { mod_ids: ids }).await
     }
 
     pub async fn get_mod_file(&self, mod_id: &i32, file_id: &i32) -> Result<File> {
@@ -116,18 +157,42 @@ impl CurseAPI {
         self.get(&format!("{API_URL}/v1/mods/{id}/files")).await
     }
 
-    pub async fn get_fingerprint_matches(&self, fingerprints: Vec<i32>) -> Result<FingerprintMatches> {
+    pub async fn get_files(&self, ids: Vec<i32>) -> Result<Vec<File>> {
         #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
         struct Body {
-            fingerprints: Vec<i32>
+            file_ids: Vec<i32>,
         }
 
-        self.fetch(|| {
-            self.client
-                .post(format!("{API_URL}/v1/fingerprints"))
-                .json(&Body { fingerprints })
-                .send()
-        }).await
+        self.post(&format!("{API_URL}/v1/mods/files"), &Body { file_ids: ids }).await
     }
-    //get_fingerprint_matches
+
+    // curseforge uses its own modified version of murmur2
+    // some bytes get stripped and the hash is calculated with seed 1
+    // I could not find this documented anywhere..
+    // this implementation is from https://github.com/gorilla-devs/furse
+    pub fn get_cf_fingerprint(bytes: &[u8]) -> u32 {
+        let bytes: Vec<u8> = bytes
+            .iter()
+            .filter(|b| !matches!(b, 9 | 10 | 13 | 32))
+            .copied()
+            .collect();
+        murmur2(&bytes, 1)
+    }
+
+    pub async fn get_fingerprint_matches(
+        &self,
+        fingerprints: &[u32],
+    ) -> Result<FingerprintMatches> {
+        #[derive(Serialize)]
+        struct Body<'a> {
+            fingerprints: &'a [u32],
+        }
+
+        self.post(
+            &format!("{API_URL}/v1/fingerprints"),
+            &Body { fingerprints },
+        )
+        .await
+    }
 }
