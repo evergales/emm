@@ -4,6 +4,8 @@ use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{error::{Error, Result}, structs::{index::{Addon, AddonSource, Index}, pack::Modpack}};
 
+use super::files::is_local_path;
+
 impl Addon {
     fn index_file_name(&self) -> String {
         format!("{}.toml", self.name.to_lowercase().replace(' ', "-"))
@@ -25,8 +27,11 @@ impl Addon {
 
 impl Index {
     pub fn path() -> Result<PathBuf> {
-        let relative_path = Modpack::read()?.index_path;
-        Ok(env::current_dir()?.join(relative_path))
+        let index_path = Modpack::read()?.index_path;
+        if !is_local_path(&index_path) {            
+            return Err(Error::Other("Invalid index path, the path to your index folder must be relative and can not leave the project root, for example: './index'".into()));
+        }
+        Ok(env::current_dir()?.join(index_path))
     }
 
     pub async fn read() -> Result<Self> {

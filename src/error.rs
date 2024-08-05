@@ -22,6 +22,9 @@ pub enum Error {
     #[error("Unable to add {0} because its project type is unsupported")]
     UnsupportedProjectType(String),
 
+    #[error("Unable to import: {0}")]
+    BadImport(String),
+
     #[error("Deprecated api usage: {0}")]
     Deprecated(String),
 

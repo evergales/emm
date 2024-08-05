@@ -14,6 +14,7 @@ pub struct Addon {
     pub name: String,
     #[serde(rename = "type")]
     pub project_type: ProjectType,
+    pub side: Side,
     pub source: AddonSource,
     pub options: Option<AddonOptions>,
     #[serde(skip_serializing, default)]
@@ -69,6 +70,15 @@ pub enum ProjectType {
     Datapack,
     Resourcepack,
     Unknown
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Side {
+    #[default]
+    Both,
+    Client,
+    Server,
 }
 
 impl TryFrom<i32> for ProjectType {

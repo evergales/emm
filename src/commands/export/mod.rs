@@ -3,11 +3,14 @@ use std::path::PathBuf;
 use crate::{cli::{ExportArgs, ExportCommands}, error::Result, structs::{index::ProjectType, pack::{Modpack, PackOptions}}};
 
 pub mod modrinth;
+pub mod curseforge;
+pub mod packwiz;
 
 pub async fn run(args: ExportArgs) -> Result<()> {
     match args.subcommand {
         ExportCommands::Modrinth { overrides_path } => modrinth::export_modrinth(overrides_path).await,
         ExportCommands::Curseforge { overrides_path } => todo!(),
+        ExportCommands::Packwiz { export_path } => packwiz::export_packwiz(export_path).await
     }
 }
 

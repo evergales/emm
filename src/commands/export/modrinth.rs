@@ -77,7 +77,7 @@ pub async fn export_modrinth(overrides_path: Option<PathBuf>) -> Result<()> {
         let mut to_download: Vec<(PathBuf, String)> = Vec::new();
 
         if !cf_addons.is_empty() {
-            let cf_files = CURSEFORGE.get_files(cf_addons.iter().map(|a| a.0.version).collect()).await?;
+            let cf_files = CURSEFORGE.get_files(cf_addons.iter().map(|a| (a.0.id, a.0.version)).collect()).await?;
     
             to_download.extend(cf_files.into_iter().map(|f| {
                 let project_type = &cf_addons.iter().find(|a| a.0.id == f.mod_id).unwrap().1;

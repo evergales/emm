@@ -2,7 +2,7 @@ use console::style;
 use dialoguer::{Confirm, Select};
 use lazy_regex::regex_captures;
 
-use crate::{api::github::GithubRelease, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, GithubSource, Index, ProjectType, ReleaseFilter}, pack::Modpack}, util::github::find_filter, GITHUB};
+use crate::{api::github::GithubRelease, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, GithubSource, Index, ProjectType, ReleaseFilter, Side}, pack::Modpack}, util::github::find_filter, GITHUB};
 
 pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bool) -> Result<()> {
     let modpack = Modpack::read()?;
@@ -85,6 +85,7 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
     let addon = Addon {
         name: repo.to_owned(),
         project_type: ProjectType::Unknown,
+        side: Side::Both,
         source: AddonSource::Github(GithubSource {
             repo: format!("{user}/{repo}"),
             tag: release.tag_name,

@@ -5,7 +5,7 @@ use console::style;
 use dialoguer::Select;
 use tokio::{task::JoinSet, try_join};
 
-use crate::{api::curseforge::{File, FileDependency, FileRelationType}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ProjectType}, pack::Modpack}, CURSEFORGE};
+use crate::{api::curseforge::{File, FileDependency, FileRelationType}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ProjectType, Side}, pack::Modpack}, CURSEFORGE};
 
 use super::{add_to_index, handle_checked};
 
@@ -97,6 +97,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<i32>) -> Re
     Ok(Addon {
         name: cf_mod.name,
         project_type,
+        side: Side::Both,
         source: AddonSource::Curseforge(CurseforgeSource {
             id: cf_mod.id,
             version: compatibles.first().unwrap().id,
