@@ -24,6 +24,7 @@ pub enum SideSupportType {
     Required,
     Optional,
     Unsupported,
+    Unknown
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

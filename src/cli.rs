@@ -191,7 +191,6 @@ pub enum ImportCommmands {
     #[command(visible_aliases = ["mr", "mrpack"])]
     Modrinth {
         /// Path to mrpack file
-        #[arg(required = true)]
         path: PathBuf
     },
 
@@ -199,8 +198,14 @@ pub enum ImportCommmands {
     #[command(visible_alias = "cf")]
     Curseforge {
         /// Path to pack zip file
-        #[arg(required = true)]
         path: PathBuf
+    },
+
+    /// Import from a packwiz pack
+    #[command(visible_alias = "pw")]
+    Packwiz {
+        /// Url or file path to a packwiz pack.toml file
+        source: String
     }
 }
 
@@ -220,6 +225,13 @@ pub enum ExportCommands {
         /// Path to overrides
         #[arg(long, short = 'o')]
         overrides_path: Option<PathBuf>
+    },
+
+    /// Export to a packwiz pack
+    #[command(visible_alias = "pw")]
+    Packwiz {
+        /// Output folder path
+        export_path: PathBuf
     }
 }
 

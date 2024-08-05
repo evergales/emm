@@ -1,23 +1,11 @@
 use std::{env, fs::{self, File}, io::Read, path::PathBuf, time::Duration};
 
-use dialoguer::Confirm;
 use indicatif::ProgressBar;
 use zip::ZipArchive;
 
-use crate::{api::curseforge::{CurseAPI, File as CurseFile}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ModrinthSource}, mrpack::{Metadata, PackDependency}, pack::{ModLoader, Modpack, PackOptions, Versions}}, CURSEFORGE, MODRINTH};
+use crate::{api::curseforge::{CurseAPI, File as CurseFile}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ModrinthSource, Side}, mrpack::{Metadata, PackDependency}, pack::{ModLoader, Modpack, PackOptions, Versions}}, util::modrinth::get_side, CURSEFORGE, MODRINTH};
 
 pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
-    if Modpack::read().is_ok() {
-        let confirm = Confirm::new()
-            .with_prompt("Importing will overwrite your current modpack, continue?")
-            .interact()
-            .unwrap();
-
-        if !confirm {
-            return Ok(());
-        }
-    }
-
     if !mrpack_path.is_file() || mrpack_path.extension().unwrap_or_default() != "mrpack" {
         return Err(Error::Other("The path you provided is not an mrpack file".into()));
     }
@@ -64,6 +52,7 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
         Addon {
             name: project.title,
             project_type: project.project_type,
+            side: get_side(&project.client_side, &project.server_side),
             source: AddonSource::Modrinth(ModrinthSource {
                 id: project.id,
                 version: version.1.id.clone(),
@@ -104,6 +93,7 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
             addons.push(Addon {
                 name: addon.name,
                 project_type: addon.class_id.unwrap().try_into()?,
+                side: Side::Both,
                 source: AddonSource::Curseforge(CurseforgeSource {
                     id: addon.id,
                     version: version_file.id

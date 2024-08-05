@@ -5,7 +5,7 @@ use console::style;
 use dialoguer::Select;
 use tokio::{task::JoinSet, try_join};
 
-use crate::{api::modrinth::{DependencyType, SearchFacet, Version, VersionDependency}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, Index, ModrinthSource, ProjectType}, pack::Modpack}, MODRINTH};
+use crate::{api::modrinth::{DependencyType, SearchFacet, Version, VersionDependency}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, Index, ModrinthSource, ProjectType}, pack::Modpack}, util::modrinth::get_side, MODRINTH};
 
 use super::{add_to_index, handle_checked};
 
@@ -95,6 +95,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<&str>) -> R
     Ok(Addon {
         name: project.title,
         project_type: project.project_type,
+        side: get_side(&project.client_side, &project.server_side),
         source: AddonSource::Modrinth(ModrinthSource {
             id: project.id,
             version: version.id,

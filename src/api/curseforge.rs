@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use murmur2::murmur2;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
@@ -5,10 +7,11 @@ use reqwest::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use tokio::task::JoinSet;
 
 use crate::{
     error::{Error, Result},
-    structs::pack::ModLoader,
+    structs::{pack::ModLoader, packwiz::HashFormat},
 };
 
 const API_URL: &str = "https://api.curseforge.com";
@@ -36,9 +39,17 @@ pub struct File {
     pub mod_id: i32,
     pub is_available: bool,
     pub file_name: String,
+    pub hashes: Vec<FileHash>,
     pub download_url: Option<String>,
     pub game_versions: Vec<String>,
     pub dependencies: Vec<FileDependency>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FileHash {
+    pub value: String,
+    pub algo: i32
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -157,14 +168,19 @@ impl CurseAPI {
         self.get(&format!("{API_URL}/v1/mods/{id}/files")).await
     }
 
-    pub async fn get_files(&self, ids: Vec<i32>) -> Result<Vec<File>> {
-        #[derive(Serialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Body {
-            file_ids: Vec<i32>,
+    // using this instead of cf's v1/mods/files path
+    // because that has inconsistencies
+    pub async fn get_files(&'static self, id_pairs: Vec<(i32, i32)>) -> Result<Vec<File>> {
+        let mut tasks: JoinSet<Result<File>> = JoinSet::new();
+        for pair in id_pairs {
+            let task = async move {
+                self.get_mod_file(&pair.0, &pair.1).await
+            };
+            tasks.spawn(task);
         }
-
-        self.post(&format!("{API_URL}/v1/mods/files"), &Body { file_ids: ids }).await
+        let mut files = Vec::new();
+        while let Some(res) = tasks.join_next().await { files.push(res??) };
+        Ok(files)
     }
 
     // curseforge uses its own modified version of murmur2
