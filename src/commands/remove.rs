@@ -7,12 +7,12 @@ pub async fn remove(args: RemoveArgs) -> Result<()> {
     let mut to_remove = Vec::new();
 
     for string in args.mods {
-        match index.addons.iter().find(|a| a.matches_str(&string)) {
+        match index.select_addon(&string) {
             Some(addon) => {
                 println!("Removing {}", addon.name);
                 to_remove.push(addon);
             },
-            None => println!("{}", style(format!("Couldn't find '{string}' in index")).color256(166)),
+            None => println!("{}", style(format!("Skipping '{}'", string)).dim()),
         }
     }
 
