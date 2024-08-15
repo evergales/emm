@@ -1,10 +1,10 @@
-use std::{collections::HashMap, env, fs, hash::Hash, path::PathBuf};
+use std::{collections::HashMap, fs, path::PathBuf};
 
-use sha1::{Digest, Sha1};
-use sha2::Sha256;
+use serde::{Deserialize, Serialize};
+use sha2::{Sha256, Digest};
 use tokio::try_join;
 
-use crate::{error::{Error, Result}, structs::{index::{AddonSource, Index, ProjectType}, pack::Modpack, packwiz::{CurseforgeModUpdate, DownloadMode, HashFormat, IndexFile, ModDownload, ModUpdate, ModrinthModUpdate, PwIndex, PwIndexInfo, PwMod, PwModHelper, PwPack}}, util::{files::is_local_path, modrinth::primary_file}, CURSEFORGE, MODRINTH};
+use crate::{error::{Error, Result}, structs::{index::{AddonSource, Index, ProjectType}, pack::Modpack, packwiz::{CurseforgeModUpdate, DownloadMode, HashFormat, IndexFile, ModDownload, ModUpdate, ModrinthModUpdate, PwIndex, PwIndexInfo, PwMod, PwPack}}, util::{files::download_file, modrinth::primary_file}, CURSEFORGE, GITHUB, MODRINTH};
 
 pub async fn export_packwiz(export_path: PathBuf) -> Result<()> {
     if !export_path.exists() || export_path.read_dir()?.count() != 0 {
@@ -56,7 +56,7 @@ pub async fn export_packwiz(export_path: PathBuf) -> Result<()> {
         };
         let pwmod_str = toml::to_string_pretty(&pwmod).unwrap();
 
-        pwmods.push(PwModHelper {
+        pwmods.push(ExportHelper {
             file_path: a.0.project_type.folder().join(format!("{}.pw.toml", pwmod.name.to_lowercase().replace(' ', "-"))),
             hash: format!("{:x}", Sha256::digest(pwmod_str.as_bytes())),
             pwmod_str,
@@ -86,14 +86,42 @@ pub async fn export_packwiz(export_path: PathBuf) -> Result<()> {
         };
         let pwmod_str = toml::to_string_pretty(&pwmod).unwrap();
 
-        pwmods.push(PwModHelper {
+        pwmods.push(ExportHelper {
             file_path: a.0.project_type.folder().join(format!("{}.pw.toml", pwmod.name.to_lowercase().replace(' ', "-"))),
             hash: format!("{:x}", Sha256::digest(pwmod_str.as_bytes())),
             pwmod_str,
         });
     });
 
+    for addon in gh_sources {
+        let repo_split: Vec<&str> = addon.1.repo.split('/').collect();
+        let release = GITHUB.get_release_by_tag(repo_split[0], repo_split[1], &addon.1.tag).await?;
+        let asset = match release.assets.get(addon.1.asset_index) {
+            Some(asset) => asset,
+            None => return Err(Error::Other(format!("Cant import {} because its release format has changed (asset index out of bounds)", addon.0.name))),
+        };
 
+        let pwmod = PwMod {
+            name: addon.0.name,
+            filename: asset.name.clone(),
+            download: ModDownload {
+                url: Some(asset.browser_download_url.clone()),
+                hash_format: HashFormat::Sha256,
+                hash: format!("{:x}", Sha256::digest(reqwest::get(&asset.browser_download_url).await?.bytes().await?)),
+                mode: None,
+            },
+            option: None,
+            side: Some(addon.0.side),
+            update: None,
+        };
+        let pwmod_str = toml::to_string_pretty(&pwmod).unwrap();
+
+        pwmods.push(ExportHelper {
+            file_path: addon.0.project_type.folder().join(format!("{}.pw.toml", pwmod.name.to_lowercase().replace(' ', "-"))),
+            hash: format!("{:x}", Sha256::digest(pwmod_str.as_bytes())),
+            pwmod_str,
+        });
+    };
     
     let pwindex = PwIndex {
         hash_format: HashFormat::Sha256,
@@ -138,6 +166,13 @@ pub async fn export_packwiz(export_path: PathBuf) -> Result<()> {
     }
     
     Ok(())
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ExportHelper {
+    pub file_path: PathBuf,
+    pub hash: String,
+    pub pwmod_str: String
 }
 
 impl ProjectType {

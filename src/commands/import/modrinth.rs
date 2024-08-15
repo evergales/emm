@@ -78,7 +78,7 @@ pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
             let path = entry?.path();
             if path.is_file() && path.extension().unwrap_or_default() == "jar" {
                 let bytes = fs::read(&path)?;
-                cf_fingerprints.push(CurseAPI::get_cf_fingerprint(&bytes));
+                cf_fingerprints.push(CurseAPI::hash_curse(&bytes));
             }
         }
 

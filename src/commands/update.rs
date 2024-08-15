@@ -1,10 +1,11 @@
 use std::{fmt::Write, sync::Arc};
 
+use lazy_regex::Regex;
 use tokio::task::JoinSet;
 
 use crate::{
     api::{curseforge::File, github::GithubRelease}, error::Result, structs::{
-        index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ReleaseFilter},
+        index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource},
         pack::Modpack,
     }, util::modrinth::get_primary_hash, CURSEFORGE, GITHUB, MODRINTH
 };
@@ -84,24 +85,19 @@ pub async fn update() -> Result<()> {
     // github updates
 
     // pair of repo string & release filter
-    let github_sources: Vec<(String, ReleaseFilter)> = index.addons.iter().filter_map(|a| match &a.source {
-        AddonSource::Github(source) => Some((source.repo.clone(), source.filter_by.clone())),
+    let github_sources: Vec<(String, Option<String>, Option<String>)> = index.addons.iter().filter_map(|a| match &a.source {
+        AddonSource::Github(source) => Some((source.repo.clone(), source.tag_filter.clone(), source.title_filter.clone())),
         _ => None
     }).collect();
 
     // pair of repo & latest compatible release
     let mut tasks: JoinSet<Result<(String, Option<GithubRelease>)>> = JoinSet::new();
-    for (repo, filter) in github_sources {
-        let modpack = modpack.clone();
-
+    for (repo, tag_filter, title_filter) in github_sources {
         let task = async move {
             let repo_split: Vec<&str> = repo.split('/').collect();
             let mut releases = GITHUB.list_releases(repo_split[0], repo_split[1]).await?;
-            releases.retain(|r| match filter {
-                ReleaseFilter::Tag => r.tag_name.contains(&modpack.versions.minecraft),
-                ReleaseFilter::Title => r.name.contains(&modpack.versions.minecraft),
-                ReleaseFilter::None => true,
-            });
+            gh_apply_filter(&mut releases, tag_filter, FilterType::Tag);
+            gh_apply_filter(&mut releases, title_filter, FilterType::Title);
     
             Ok((repo, releases.first().map(|r| r.to_owned())))
         };
@@ -160,4 +156,25 @@ pub async fn update() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn gh_apply_filter(releases: &mut Vec<GithubRelease>, filter: Option<String>, filter_type: FilterType) {
+    if filter.is_none() {
+        return;
+    }
+
+    match Regex::new(filter.as_ref().unwrap()) {
+        Ok(regex) => {
+            releases.retain(|r| regex.is_match(match filter_type {
+                FilterType::Tag => &r.tag_name,
+                FilterType::Title => &r.name,
+            }))
+        },
+        Err(_) => println!("{} is not a valid regex pattern, skipping applying on github releases", filter.unwrap()),
+    }
+}
+
+enum FilterType {
+    Tag,
+    Title
 }

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use murmur2::murmur2;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
@@ -11,7 +9,7 @@ use tokio::task::JoinSet;
 
 use crate::{
     error::{Error, Result},
-    structs::{pack::ModLoader, packwiz::HashFormat},
+    structs::pack::ModLoader,
 };
 
 const API_URL: &str = "https://api.curseforge.com";
@@ -187,7 +185,7 @@ impl CurseAPI {
     // some bytes get stripped and the hash is calculated with seed 1
     // I could not find this documented anywhere..
     // this implementation is from https://github.com/gorilla-devs/furse
-    pub fn get_cf_fingerprint(bytes: &[u8]) -> u32 {
+    pub fn hash_curse(bytes: &[u8]) -> u32 {
         let bytes: Vec<u8> = bytes
             .iter()
             .filter(|b| !matches!(b, 9 | 10 | 13 | 32))
