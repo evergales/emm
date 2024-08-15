@@ -1,5 +1,6 @@
 use std::{env, fs, path::PathBuf, sync::Arc};
 
+use dialoguer::{FuzzySelect, Select};
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{error::{Error, Result}, structs::{index::{Addon, AddonSource, Index}, pack::Modpack}};
@@ -112,5 +113,21 @@ impl Index {
         }
 
         Ok(())
+    }
+
+    pub fn select_addon(&self, str: &str) -> Option<&Addon> {
+        match self.addons.iter().find(|a| a.matches_str(str)) {
+            Some(addon) => Some(addon),
+            None => {
+                let idx = FuzzySelect::new()
+                    .with_prompt("Similar to:")
+                    .items(&self.addons.iter().map(|a| a.name.as_str()).collect::<Vec<&str>>())
+                    .with_initial_text(str)
+                    .interact_opt()
+                    .unwrap();
+
+                idx.map(|idx| self.addons.get(idx).unwrap())
+            },
+        }
     }
 }
