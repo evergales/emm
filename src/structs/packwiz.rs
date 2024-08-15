@@ -1,4 +1,4 @@
-use std::{collections::HashMap, default, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -48,13 +48,6 @@ pub struct IndexFile {
     pub hash: String,
     pub hash_format: Option<HashFormat>,
     pub metafile: Option<bool>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct PwModHelper {
-    pub file_path: PathBuf,
-    pub hash: String,
-    pub pwmod_str: String
 }
 
 #[derive(Debug, Serialize, Deserialize)]

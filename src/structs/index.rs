@@ -55,7 +55,8 @@ pub struct CurseforgeSource {
 pub struct GithubSource {
     pub repo: String,
     pub tag: String,
-    pub filter_by: ReleaseFilter,
+    pub tag_filter: Option<String>,
+    pub title_filter: Option<String>,
     pub asset_index: usize
 }
 
@@ -92,26 +93,6 @@ impl TryFrom<i32> for ProjectType {
             12 => Ok(Self::Resourcepack),
             _ => Err(Error::UnsupportedProjectType(String::new()))
         }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum ReleaseFilter {
-    Tag,
-    Title,
-    None
-}
-
-impl std::fmt::Display for ReleaseFilter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", {
-            match self {
-                Self::Tag => "tag",
-                Self::Title => "title",
-                Self::None => "none",
-            }
-        })
     }
 }
 

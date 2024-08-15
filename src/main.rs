@@ -41,6 +41,6 @@ async fn main() {
         */
         _ => unimplemented!()
     } {
-        eprintln!("{err:#?}")
+        eprintln!("{err}")
     }
 }

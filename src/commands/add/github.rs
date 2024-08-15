@@ -1,12 +1,10 @@
 use console::style;
-use dialoguer::{Confirm, Select};
+use dialoguer::Select;
 use lazy_regex::regex_captures;
 
-use crate::{api::github::GithubRelease, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, GithubSource, Index, ProjectType, ReleaseFilter, Side}, pack::Modpack}, util::github::find_filter, GITHUB};
+use crate::{error::{Error, Result}, structs::index::{Addon, AddonOptions, AddonSource, GithubSource, Index, ProjectType, Side}, GITHUB};
 
 pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bool) -> Result<()> {
-    let modpack = Modpack::read()?;
-
     // regex to extract user & repo
     // accepts github urls and just "user/repo"
     let (user, repo) = match regex_captures!(r#"(?:https?:\/\/github\.com\/)?([\w.-]+?)\/([\w.-]+)(?:\/.*)?"#, &repo_input) {
@@ -16,32 +14,8 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
 
     let releases = GITHUB.list_releases(user, repo).await?;
     let release_names: Vec<&str> = releases.iter().map(|r| r.name.as_str()).collect();
-    let tags: Vec<&str> = releases.iter().map(|r| r.tag_name.as_str()).collect();
 
-    let tag_filter = tags.iter().find(|t| find_filter(t, &modpack).is_some());
-    let title_filter = release_names.iter().find(|t| find_filter(t, &modpack).is_some());
-
-    let (mut filter_by, filter) = if let Some(found) = tag_filter {
-        (ReleaseFilter::Tag, Some(find_filter(tags.iter().find(|t| t == &found).unwrap(), &modpack).unwrap()))
-    } else if let Some(found) = title_filter {
-        (ReleaseFilter::Title, Some(find_filter(release_names.iter().find(|n| n == &found).unwrap(), &modpack).unwrap()))
-    } else {
-        (ReleaseFilter::None, None)
-    };
-
-    if filter_by != ReleaseFilter::None {
-        println!("filter releases by {}: {}", filter_by, filter.unwrap());
-        if !Confirm::new()
-            .with_prompt("Use filter")
-            .interact()
-            .unwrap()
-        {
-            filter_by = ReleaseFilter::None
-        }
-    }
-
-    let release = if tag.is_some() || filter_by == ReleaseFilter::None {
-        match tag {
+    let release = match tag {
             Some(tag) => {
                 match releases.iter().find(|r| r.tag_name == tag) {
                     Some(release) => release.clone(),
@@ -57,17 +31,6 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
     
                 releases[idx].clone()
             },
-        }
-    } else {
-        let filtered: Vec<GithubRelease> = releases.clone().into_iter().filter(|r| {
-            match filter_by {
-                ReleaseFilter::Tag => r.tag_name.to_lowercase().contains(&modpack.versions.minecraft),
-                ReleaseFilter::Title => r.name.to_lowercase().contains(&modpack.versions.minecraft),
-               _ => unreachable!()
-            }
-        }).collect();
-
-        filtered.first().unwrap().clone()
     };
 
     let asset_index =
@@ -89,7 +52,8 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
         source: AddonSource::Github(GithubSource {
             repo: format!("{user}/{repo}"),
             tag: release.tag_name,
-            filter_by,
+            tag_filter: None,
+            title_filter: None,
             asset_index,
         }),
         options: Some(AddonOptions::default()),
