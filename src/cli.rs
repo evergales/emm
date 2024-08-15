@@ -101,19 +101,13 @@ pub struct AddArgs {
 #[derive(clap::Args)]
 pub struct PinArgs {
     /// A mod name/id you want to pin
-    #[arg(name = "mod")]
-    pub m: String,
-
-    /// Pin the mod to this specific version id
-    #[arg(long, short = 'v')]
-    pub version: Option<String>
+    pub addon: String,
 }
 
 #[derive(clap::Args)]
 pub struct UnpinArgs {
     /// A mod name/id you want to unpin
-    #[arg(name = "mod")]
-    pub m: String
+    pub addon: String
 }
 
 #[derive(clap::Args)]
