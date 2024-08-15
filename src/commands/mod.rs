@@ -5,3 +5,5 @@ pub mod update;
 pub mod import;
 pub mod export;
 pub mod migrate;
+pub mod pin;
+pub mod unpin;

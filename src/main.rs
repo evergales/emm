@@ -30,9 +30,9 @@ async fn main() {
         Commands::Update => commands::update::update().await,
         Commands::Import(args) => commands::import::run(args).await,
         Commands::Export(args) => commands::export::run(args).await,
+        Commands::Pin(args) => commands::pin::pin(args).await,
+        Commands::Unpin(args) => commands::unpin::unpin(args).await,
         /*
-        Commands::Pin { m, version } => todo!(),
-        Commands::Unpin { m } => todo!(),
         Commands::List { verbose } => todo!(),
         Commands::Import { subcommand } => todo!(),
         Commands::Export { subcommand } => todo!(),
