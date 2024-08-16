@@ -135,8 +135,8 @@ pub async fn export_packwiz(args: ExportPackwizArgs) -> Result<()> {
     let pwindex_str = toml::to_string_pretty(&pwindex).unwrap();
 
     let mut pack_versions: HashMap<String, String> = HashMap::new();
-    pack_versions.insert("minecraft".into(), modpack.versions.minecraft);
-    pack_versions.insert(modpack.versions.loader.to_string().to_lowercase(), modpack.versions.loader_version);
+    pack_versions.insert("minecraft".into(), modpack.versions.minecraft.clone());
+    pack_versions.insert(modpack.versions.loader.to_string().to_lowercase(), modpack.get_loader_version().await?);
 
     let pwpack = PwPack {
         name: modpack.name,

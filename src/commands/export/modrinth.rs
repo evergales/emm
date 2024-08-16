@@ -57,7 +57,7 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
 
     let mut pack_dependencies: HashMap<PackDependency, String> = HashMap::new();
     pack_dependencies.insert(PackDependency::Minecraft, modpack.versions.minecraft.clone());
-    pack_dependencies.insert(modpack.versions.loader.clone().into(), modpack.versions.loader_version.clone());
+    pack_dependencies.insert(modpack.versions.loader.clone().into(), modpack.get_loader_version().await?);
 
     let metadata = Metadata {
         format_version: 1,
