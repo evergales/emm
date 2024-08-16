@@ -1,6 +1,8 @@
 use std::{fmt::Write, sync::Arc};
 
+use console::style;
 use lazy_regex::Regex;
+use supports_hyperlinks::supports_hyperlinks;
 use tokio::task::JoinSet;
 
 use crate::{
@@ -56,7 +58,7 @@ pub async fn update() -> Result<()> {
     }).collect();
 
     let mut tasks: JoinSet<Result<Option<File>>> = JoinSet::new();
-    for id in cf_addon_ids {
+    for id in cf_addon_ids.clone() {
         let modpack = modpack.clone();
 
         let task = async move {
@@ -81,6 +83,9 @@ pub async fn update() -> Result<()> {
             latest_cf_versions.push(file);
         }
     }
+
+    // (mod_id, website_url) for displaying links later
+    let cf_links: Vec<(i32, String)> = CURSEFORGE.get_mods(cf_addon_ids).await.unwrap_or_default().into_iter().map(|a| (a.id, a.links.website_url)).collect();
 
     // github updates
 
@@ -116,24 +121,37 @@ pub async fn update() -> Result<()> {
     }
 
     // Mods with updated version ids
-    let to_update: Vec<Addon> = index.addons.into_iter().filter_map(|addon| {
+    // (Addon, new_version)
+    let to_update: Vec<(Addon, String)> = index.addons.into_iter().filter_map(|addon| {
         match &addon.source {
             AddonSource::Modrinth(source) => {
                 let latest_version = latest_mr_versions.values().find(|v| v.project_id == source.id).unwrap();
                 if latest_version.id != source.version {
-                    return Some(Addon { source: AddonSource::Modrinth(ModrinthSource { id: source.id.clone(), version: latest_version.id.clone() }), ..addon });
+                    return Some((
+                        Addon { source: AddonSource::Modrinth(ModrinthSource { id: source.id.clone(), version: latest_version.id.clone() }), ..addon },
+                        to_hyperlink(&format!("https://modrinth.com/project/{}/version/{}", source.id, latest_version.id), &latest_version.version_number)
+                    ));
                 }
             },
             AddonSource::Curseforge(source) => {
                 let latest_version = latest_cf_versions.iter().find(|v| v.mod_id == source.id).unwrap();
                 if latest_version.id != source.version {
-                    return Some(Addon { source: AddonSource::Curseforge(CurseforgeSource { id: source.id, version: latest_version.id }), ..addon });
+                    return Some((
+                        Addon { source: AddonSource::Curseforge(CurseforgeSource { id: source.id, version: latest_version.id }), ..addon },
+                        to_hyperlink(
+                            &format!("{}/files/{}", cf_links.iter().find(|l| l.0 == source.id).unwrap().1, latest_version.id),
+                            &latest_version.file_name
+                        )
+                    ));
                 }
             },
             AddonSource::Github(source) => {
-                let latest_version = latest_gh_versions.iter().find(|r| r.0 == source.repo).unwrap();
-                if latest_version.1.tag_name != source.tag {
-                    return Some(Addon { source: AddonSource::Github(GithubSource { tag: latest_version.1.tag_name.clone(), ..source.clone() }), ..addon});
+                let latest_version = &latest_gh_versions.iter().find(|r| r.0 == source.repo).unwrap().1;
+                if latest_version.tag_name != source.tag {
+                    return Some((
+                        Addon { source: AddonSource::Github(GithubSource { tag: latest_version.tag_name.clone(), ..source.clone() }), ..addon},
+                        to_hyperlink(&format!("https://github.com/{}/releases/tag/{}", source.repo, latest_version.tag_name), &latest_version.tag_name)
+                    ));
                 }
             },
         }
@@ -145,17 +163,27 @@ pub async fn update() -> Result<()> {
         println!("No new updates found!");
     } else {
         println!(
-            "{}",
+            "Updating:{}",
             to_update.iter().fold(String::new(), |mut out, a| {
-                write!(out, "Updating {}", a.name).unwrap();
+                write!(out, "\n{} {}", style(&a.0.name).bold(), style(&a.1).dim()).unwrap();
                 out
             })
         );
         
-        Index::write_addons(to_update).await?;
+        Index::write_addons(to_update.into_iter().map(|a| a.0).collect()).await?;
     }
 
     Ok(())
+}
+
+// using https://crates.io/crates/supports-hyperlinks
+// to test if hyperlinks in terminal are supported and use a link if they are
+fn to_hyperlink(link: &str, placeholder: &str) -> String {
+    if supports_hyperlinks() {
+        format!("\u{1b}]8;;{}\u{1b}\\{}\u{1b}]8;;\u{1b}\\", link, placeholder)
+    } else {
+        placeholder.into()
+    }
 }
 
 fn gh_apply_filter(releases: &mut Vec<GithubRelease>, filter: Option<String>, filter_type: FilterType) {

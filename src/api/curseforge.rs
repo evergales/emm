@@ -26,8 +26,16 @@ pub struct Mod {
     pub id: i32,
     pub game_id: i32,
     pub name: String,
+    pub links: ModLinks,
+    pub summary: String,
     pub class_id: Option<i32>,
     pub allow_mod_distribution: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ModLinks {
+    pub website_url: String
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
