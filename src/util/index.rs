@@ -1,6 +1,6 @@
 use std::{env, fs, path::PathBuf, sync::Arc};
 
-use dialoguer::{FuzzySelect, Select};
+use dialoguer::FuzzySelect;
 use tokio::{sync::Semaphore, task::JoinSet};
 
 use crate::{error::{Error, Result}, structs::{index::{Addon, AddonSource, Index}, pack::Modpack}};
@@ -17,6 +17,14 @@ impl Addon {
             AddonSource::Modrinth(source) => source.id.clone(),
             AddonSource::Curseforge(source) => source.id.to_string(),
             AddonSource::Github(source) => source.repo.clone(),
+        }
+    }
+
+    pub fn generic_version(&self) -> String {
+        match &self.source {
+            AddonSource::Modrinth(source) => source.version.clone(),
+            AddonSource::Curseforge(source) => source.version.to_string(),
+            AddonSource::Github(source) => source.tag.clone(),
         }
     }
 
