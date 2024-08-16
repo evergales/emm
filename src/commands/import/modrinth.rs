@@ -3,17 +3,17 @@ use std::{env, fs::{self, File}, io::Read, path::PathBuf, time::Duration};
 use indicatif::ProgressBar;
 use zip::ZipArchive;
 
-use crate::{api::curseforge::{CurseAPI, File as CurseFile}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ModrinthSource, Side}, mrpack::{Metadata, PackDependency}, pack::{ModLoader, Modpack, PackOptions, Versions}}, util::modrinth::get_side, CURSEFORGE, MODRINTH};
+use crate::{api::curseforge::{CurseAPI, File as CurseFile}, cli::ImportModrinthArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ModrinthSource, Side}, mrpack::{Metadata, PackDependency}, pack::{ModLoader, Modpack, PackOptions, Versions}}, util::modrinth::get_side, CURSEFORGE, MODRINTH};
 
-pub async fn import_modrinth(mrpack_path: PathBuf) -> Result<()> {
-    if !mrpack_path.is_file() || mrpack_path.extension().unwrap_or_default() != "mrpack" {
+pub async fn import_modrinth(args: ImportModrinthArgs) -> Result<()> {
+    if !args.path.is_file() || args.path.extension().unwrap_or_default() != "mrpack" {
         return Err(Error::Other("The path you provided is not an mrpack file".into()));
     }
 
     let progress = ProgressBar::new_spinner().with_message("Reading mrpack file");
     progress.enable_steady_tick(Duration::from_millis(100));
 
-    let mut zip = ZipArchive::new(File::open(mrpack_path)?)?;
+    let mut zip = ZipArchive::new(File::open(args.path)?)?;
 
     let mut mrpack_string = String::new();
     zip.by_name("modrinth.index.json")?.read_to_string(&mut mrpack_string)?;

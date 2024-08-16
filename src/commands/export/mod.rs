@@ -8,9 +8,9 @@ pub mod packwiz;
 
 pub async fn run(args: ExportArgs) -> Result<()> {
     match args.subcommand {
-        ExportCommands::Modrinth { overrides_path } => modrinth::export_modrinth(overrides_path).await,
-        ExportCommands::Curseforge { overrides_path } => todo!(),
-        ExportCommands::Packwiz { export_path } => packwiz::export_packwiz(export_path).await
+        ExportCommands::Modrinth(args) => modrinth::export_modrinth(args).await,
+        ExportCommands::Curseforge(args) => todo!(),
+        ExportCommands::Packwiz(args) => packwiz::export_packwiz(args).await
     }
 }
 

@@ -2,12 +2,12 @@ use console::style;
 use dialoguer::Select;
 use lazy_regex::regex_captures;
 
-use crate::{error::{Error, Result}, structs::index::{Addon, AddonOptions, AddonSource, GithubSource, Index, ProjectType, Side}, GITHUB};
+use crate::{cli::AddGithubArgs, error::{Error, Result}, structs::index::{Addon, AddonOptions, AddonSource, GithubSource, Index, ProjectType, Side}, GITHUB};
 
-pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bool) -> Result<()> {
+pub async fn add_github(args: AddGithubArgs) -> Result<()> {
     // regex to extract user & repo
     // accepts github urls and just "user/repo"
-    let (user, repo) = match regex_captures!(r#"(?:https?:\/\/github\.com\/)?([\w.-]+?)\/([\w.-]+)(?:\/.*)?"#, &repo_input) {
+    let (user, repo) = match regex_captures!(r#"(?:https?:\/\/github\.com\/)?([\w.-]+?)\/([\w.-]+)(?:\/.*)?"#, &args.repo) {
         Some((_, user, repo)) => (user, repo),
         None => return Err(Error::Other(format!("{} \nuse a github url or user/repo'", style("Invalid github url").color256(166)))),
     };
@@ -15,7 +15,7 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
     let releases = GITHUB.list_releases(user, repo).await?;
     let release_names: Vec<&str> = releases.iter().map(|r| r.name.as_str()).collect();
 
-    let release = match tag {
+    let release = match args.tag {
             Some(tag) => {
                 match releases.iter().find(|r| r.tag_name == tag) {
                     Some(release) => release.clone(),
@@ -34,7 +34,7 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
     };
 
     let asset_index =
-    if first_asset || release.assets.len() == 1 {
+    if args.first_asset || release.assets.len() == 1 {
         0 
     } else {
         let asset_names: Vec<&str> = release.assets.iter().map(|a| a.name.as_str()).collect();
@@ -44,6 +44,8 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
             .interact()
             .unwrap()
     };
+
+    // todo: Ask what type of addon the user's adding (things are exported to "overrides/unknown" rn..)
 
     let addon = Addon {
         name: repo.to_owned(),

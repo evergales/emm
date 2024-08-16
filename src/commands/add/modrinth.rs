@@ -5,21 +5,21 @@ use console::style;
 use dialoguer::Select;
 use tokio::{task::JoinSet, try_join};
 
-use crate::{api::modrinth::{DependencyType, SearchFacet, Version, VersionDependency}, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, Index, ModrinthSource, ProjectType}, pack::Modpack}, util::modrinth::get_side, MODRINTH};
+use crate::{api::modrinth::{DependencyType, SearchFacet, Version, VersionDependency}, cli::AddModrinthArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, Index, ModrinthSource, ProjectType}, pack::Modpack}, util::modrinth::get_side, MODRINTH};
 
 use super::{add_to_index, handle_checked};
 
-pub async fn add_modrinth(ids: Vec<String>, version: Option<String>) -> Result<()> {
+pub async fn add_modrinth(args: AddModrinthArgs) -> Result<()> {
     let modpack = Arc::new(Modpack::read()?);
 
-    if ids.len() > 1 && version.is_some() {
+    if args.ids.len() > 1 && args.version.is_some() {
         return Err(Error::Other("Only use the -v/--version flag when adding 1 mod".into()));
     }
 
     let mut to_search = Vec::new();
     let mut addons = Vec::new();
-    for (idx, id) in ids.iter().enumerate() {
-        match resolve_mod(&modpack, id, version.as_deref()).await {
+    for (idx, id) in args.ids.iter().enumerate() {
+        match resolve_mod(&modpack, id, args.version.as_deref()).await {
             Ok(addon) => addons.push(addon),
             Err(err) => match err {
                 Error::NotFound(_) | Error::InvalidId(_) => to_search.push(id.as_str()),

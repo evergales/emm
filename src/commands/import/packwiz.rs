@@ -3,22 +3,22 @@ use std::{fs, path::PathBuf};
 use serde::de::DeserializeOwned;
 use tokio::task::JoinSet;
 
-use crate::{error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ModrinthSource, ProjectType}, pack::{ModLoader, Modpack, PackOptions, Versions}, packwiz::{IndexFile, ModUpdate, PwIndex, PwMod, PwPack}}};
+use crate::{cli::ImportPackwizArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ModrinthSource, ProjectType}, pack::{ModLoader, Modpack, PackOptions, Versions}, packwiz::{IndexFile, ModUpdate, PwIndex, PwMod, PwPack}}};
 
-pub async fn import_packwiz(source: String) -> Result<()> {
-    if !source.ends_with("pack.toml") {
+pub async fn import_packwiz(args: ImportPackwizArgs) -> Result<()> {
+    if !args.source.ends_with("pack.toml") {
         return Err(Error::BadImport("please provide a valid url or path to a packwiz pack.toml file".into()));
     }
-    if !source.starts_with("http") {
-        let source_path = PathBuf::from(&source);
+    if !args.source.starts_with("http") {
+        let source_path = PathBuf::from(&args.source);
         if !source_path.exists() {
             return Err(Error::BadImport("the path you provided does not exist".into()));
         }
     }
 
-    let base_path = source.strip_suffix("/pack.toml").unwrap().to_string();
+    let base_path = args.source.strip_suffix("/pack.toml").unwrap().to_string();
 
-    let source_pack: PwPack = PwFile::from(&source).get_content().await?;
+    let source_pack: PwPack = PwFile::from(&args.source).get_content().await?;
     let file_index: PwIndex = PwFile::from(format!("{}/{}", base_path, source_pack.index.file)).get_content().await?;
 
     let mut tasks: JoinSet<Result<Addon>> = JoinSet::new();

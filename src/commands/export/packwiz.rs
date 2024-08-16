@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Digest};
 use tokio::try_join;
 
-use crate::{error::{Error, Result}, structs::{index::{AddonSource, Index, ProjectType}, pack::Modpack, packwiz::{CurseforgeModUpdate, DownloadMode, HashFormat, IndexFile, ModDownload, ModUpdate, ModrinthModUpdate, PwIndex, PwIndexInfo, PwMod, PwPack}}, util::{files::download_file, modrinth::primary_file}, CURSEFORGE, GITHUB, MODRINTH};
+use crate::{cli::ExportPackwizArgs, error::{Error, Result}, structs::{index::{AddonSource, Index, ProjectType}, pack::Modpack, packwiz::{CurseforgeModUpdate, DownloadMode, HashFormat, IndexFile, ModDownload, ModUpdate, ModrinthModUpdate, PwIndex, PwIndexInfo, PwMod, PwPack}}, util::{files::download_file, modrinth::primary_file}, CURSEFORGE, GITHUB, MODRINTH};
 
-pub async fn export_packwiz(export_path: PathBuf) -> Result<()> {
-    if !export_path.exists() || export_path.read_dir()?.count() != 0 {
+pub async fn export_packwiz(args: ExportPackwizArgs) -> Result<()> {
+    if !args.export_path.exists() || args.export_path.read_dir()?.count() != 0 {
         return Err(Error::Other("Please provide an existing and empty folder path to export to".into()));
     }
 
@@ -153,11 +153,11 @@ pub async fn export_packwiz(export_path: PathBuf) -> Result<()> {
     };
     let pwpack_str = toml::to_string_pretty(&pwpack).unwrap();
 
-    fs::write(export_path.join("pack.toml"), pwpack_str)?;
-    fs::write(export_path.join("index.toml"), pwindex_str)?;
+    fs::write(args.export_path.join("pack.toml"), pwpack_str)?;
+    fs::write(args.export_path.join("index.toml"), pwindex_str)?;
 
     for file in pwmods {
-        let full_path = export_path.join(file.file_path);
+        let full_path = args.export_path.join(file.file_path);
         let parent_dir = full_path.parent().unwrap();
         if !parent_dir.exists() {
             fs::create_dir_all(parent_dir)?;
