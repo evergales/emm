@@ -55,8 +55,6 @@ pub struct CurseforgeSource {
 pub struct GithubSource {
     pub repo: String,
     pub tag: String,
-    pub tag_filter: Option<String>,
-    pub title_filter: Option<String>,
     pub asset_index: usize
 }
 

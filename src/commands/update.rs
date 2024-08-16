@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fmt::Write, sync::Arc};
 
 use console::style;
-use lazy_regex::Regex;
 use supports_hyperlinks::supports_hyperlinks;
 use tokio::{task::JoinSet, try_join};
 
@@ -25,7 +24,7 @@ pub async fn update() -> Result<()> {
     index.addons.iter().for_each(|a| match &a.source {
         AddonSource::Modrinth(source) => mr_addon_versions.push(source.version.as_str()),
         AddonSource::Curseforge(source) => cf_addon_ids.push(source.id),
-        AddonSource::Github(source) => gh_addon_sources.push((source.repo.clone(), source.tag_filter.clone(), source.title_filter.clone()))
+        AddonSource::Github(source) => gh_addon_sources.push(source.repo.clone())
     });
 
     let (
@@ -162,15 +161,13 @@ async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<i32>) -> Result<
     Ok((latest_cf_versions, cf_links))
 }
 
-async fn update_github(gh_addon_sources: Vec<(String, Option<String>, Option<String>)>) -> Result<Vec<(String, GithubRelease)>> {
+async fn update_github(gh_addon_sources: Vec<String>) -> Result<Vec<(String, GithubRelease)>> {
     // pair of repo & latest compatible release
     let mut tasks: JoinSet<Result<(String, Option<GithubRelease>)>> = JoinSet::new();
-    for (repo, tag_filter, title_filter) in gh_addon_sources {
+    for repo in gh_addon_sources {
         let task = async move {
             let repo_split: Vec<&str> = repo.split('/').collect();
-            let mut releases = GITHUB.list_releases(repo_split[0], repo_split[1]).await?;
-            gh_apply_filter(&mut releases, tag_filter.clone(), FilterType::Tag);
-            gh_apply_filter(&mut releases, title_filter.clone(), FilterType::Title);
+            let releases = GITHUB.list_releases(repo_split[0], repo_split[1]).await?;
     
             Ok((repo.to_owned(), releases.first().map(|r| r.to_owned())))
         };
@@ -189,25 +186,4 @@ async fn update_github(gh_addon_sources: Vec<(String, Option<String>, Option<Str
     }
 
     Ok(latest_gh_versions)
-}
-
-fn gh_apply_filter(releases: &mut Vec<GithubRelease>, filter: Option<String>, filter_type: FilterType) {
-    if filter.is_none() {
-        return;
-    }
-
-    match Regex::new(filter.as_ref().unwrap()) {
-        Ok(regex) => {
-            releases.retain(|r| regex.is_match(match filter_type {
-                FilterType::Tag => &r.tag_name,
-                FilterType::Title => &r.name,
-            }))
-        },
-        Err(_) => println!("{} is not a valid regex pattern, skipping applying on github releases", filter.unwrap()),
-    }
-}
-
-enum FilterType {
-    Tag,
-    Title
 }
