@@ -2,11 +2,18 @@ use reqwest::{
     header::{HeaderMap, HeaderValue}, Client, RequestBuilder, Response
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use tokio::task::JoinSet;
 
 use crate::error::{Error, Result};
 
 const API_URL: &str = "https://api.github.com";
 const API_VERSION: &str = "2022-11-28";
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Repository {
+    pub full_name: String,
+    pub description: String
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GithubRelease {
@@ -46,6 +53,25 @@ impl GithubApi {
 
     async fn get<T: DeserializeOwned>(&self, url: &str) -> Result<T> {
         self.fetch(|| self.client.get(url)).await
+    }
+
+    pub async fn get_repo(&self, owner: &str, repo: &str) -> Result<Repository> {
+        self.get(&format!("{API_URL}/repos/{owner}/{repo}")).await
+    }
+
+    pub async fn get_repos(&'static self, repos: Vec<(String, String)>) -> Result<Vec<Repository>> {
+        let mut tasks: JoinSet<Result<Repository>> = JoinSet::new();
+        for repo in repos {
+            let task = async move {
+                self.get(&format!("{API_URL}/repos/{}/{}", repo.0, repo.1)).await
+            };
+            tasks.spawn(task);
+        }
+
+        let mut return_repos = Vec::new();
+        while let Some(res) = tasks.join_next().await { return_repos.push(res??) }
+
+        Ok(return_repos)
     }
 
     pub async fn list_releases(&self, owner: &str, repo: &str) -> Result<Vec<GithubRelease>> {

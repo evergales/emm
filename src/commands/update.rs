@@ -1,14 +1,13 @@
 use std::{collections::HashMap, fmt::Write, sync::Arc};
 
 use console::style;
-use supports_hyperlinks::supports_hyperlinks;
 use tokio::{task::JoinSet, try_join};
 
 use crate::{
     api::{curseforge::File, github::GithubRelease, modrinth::Version}, error::Result, structs::{
         index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource},
         pack::Modpack,
-    }, util::modrinth::get_primary_hash, CURSEFORGE, GITHUB, MODRINTH
+    }, util::{modrinth::get_primary_hash, to_hyperlink}, CURSEFORGE, GITHUB, MODRINTH
 };
 
 pub async fn update() -> Result<()> {
@@ -91,16 +90,6 @@ pub async fn update() -> Result<()> {
     }
 
     Ok(())
-}
-
-// using https://crates.io/crates/supports-hyperlinks
-// to test if hyperlinks in terminal are supported and use a link if they are
-fn to_hyperlink(link: &str, placeholder: &str) -> String {
-    if supports_hyperlinks() {
-        format!("\u{1b}]8;;{}\u{1b}\\{}\u{1b}]8;;\u{1b}\\", link, placeholder)
-    } else {
-        placeholder.into()
-    }
 }
 
 async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Result<HashMap<String, Version>> {
