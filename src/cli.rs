@@ -112,9 +112,9 @@ pub struct UnpinArgs {
 
 #[derive(clap::Args)]
 pub struct ListArgs {
-    /// List mods in more detail
-    #[arg(long, short = 'v')]
-    pub verbose: bool
+    /// List mods in markdown format
+    #[arg(long, short = 'm')]
+    pub markdown: bool
 }
 
 #[derive(clap::Args)]

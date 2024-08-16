@@ -12,10 +12,12 @@ use crate::{
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Project {
     pub title: String,
+    pub description: String,
     pub client_side: SideSupportType,
     pub server_side: SideSupportType,
     pub project_type: ProjectType,
     pub id: String,
+    pub license: Option<ProjectLicense>
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -25,6 +27,11 @@ pub enum SideSupportType {
     Optional,
     Unsupported,
     Unknown
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ProjectLicense {
+    pub name: String
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

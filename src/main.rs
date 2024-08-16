@@ -34,8 +34,6 @@ async fn main() {
         Commands::Unpin(args) => commands::unpin::unpin(args).await,
         /*
         Commands::List { verbose } => todo!(),
-        Commands::Import { subcommand } => todo!(),
-        Commands::Export { subcommand } => todo!(),
         Commands::Migrate { subcommand } => todo!(),
         Commands::Completion { shell } => todo!(),
         */
