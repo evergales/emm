@@ -123,6 +123,7 @@ impl Index {
                     .with_prompt("Similar to:")
                     .items(&self.addons.iter().map(|a| a.name.as_str()).collect::<Vec<&str>>())
                     .with_initial_text(str)
+                    .report(false)
                     .interact_opt()
                     .unwrap();
 

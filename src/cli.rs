@@ -102,6 +102,10 @@ pub struct AddArgs {
 pub struct PinArgs {
     /// A mod name/id you want to pin
     pub addon: String,
+
+    /// Version id to pin the addon to
+    #[arg(long, short='v')]
+    pub version: Option<String>
 }
 
 #[derive(clap::Args)]
