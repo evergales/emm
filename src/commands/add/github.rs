@@ -52,8 +52,6 @@ pub async fn add_github(repo_input: String, tag: Option<String>, first_asset: bo
         source: AddonSource::Github(GithubSource {
             repo: format!("{user}/{repo}"),
             tag: release.tag_name,
-            tag_filter: None,
-            title_filter: None,
             asset_index,
         }),
         options: Some(AddonOptions::default()),
