@@ -18,8 +18,8 @@ pub async fn run(args: ImportArgs) -> Result<()> {
         }
     }
     match args.subcommand {
-        ImportCommmands::Modrinth { path } => modrinth::import_modrinth(path).await,
-        ImportCommmands::Curseforge { path } => todo!(),
-        ImportCommmands::Packwiz { source } => packwiz::import_packwiz(source).await,
+        ImportCommmands::Modrinth(args) => modrinth::import_modrinth(args).await,
+        ImportCommmands::Curseforge(args) => todo!(),
+        ImportCommmands::Packwiz(args) => packwiz::import_packwiz(args).await,
     }
 }

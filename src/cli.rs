@@ -143,94 +143,121 @@ pub struct MigrateArgs {
 pub enum AddCommands {
     /// Add mods from modrinth
     #[command(visible_alias = "mr")]
-    Modrinth {
-        /// Project ids/slugs or search terms
-        #[arg(required = true)]
-        ids: Vec<String>,
-
-        /// The version id of the mod to add, ignores compatability checks
-        #[arg(long, short = 'v')]
-        version: Option<String>
-    },
+    Modrinth(AddModrinthArgs),
 
     /// Add mods from curseforge
     #[command(visible_alias = "cf")]
-    Curseforge {
-        /// Project ids/slugs or search terms
-        #[arg(required = true)]
-        ids: Vec<String>,
-
-        /// The version id of the mod to add, ignores compatability checks
-        #[arg(long, short = 'v')]
-        version: Option<i32>
-    },
+    Curseforge(AddCurseforgeArgs),
 
     /// Add mods from a github repo's releases
     #[command(visible_alias = "gh")]
-    Github {
-        /// The repository to add mods from,
-        /// github url or owner/repo accepted
-        #[arg(required = true)]
-        repo: String,
-        
-        /// The release tag to use
-        #[arg(long, short = 't')]
-        tag: Option<String>,
+    Github(AddGithubArgs)
+}
 
-        /// Use the first release asset
-        #[arg(long, short = 'f')]
-        first_asset: bool
-    }
+#[derive(clap::Args)]
+pub struct AddModrinthArgs {
+    /// Project ids/slugs or search terms
+    #[arg(required = true)]
+    pub ids: Vec<String>,
+
+    /// The version id of the mod to add, ignores compatability checks
+    #[arg(long, short = 'v')]
+    pub version: Option<String>
+}
+
+#[derive(clap::Args)]
+pub struct AddCurseforgeArgs  {
+    /// Project ids/slugs or search terms
+    #[arg(required = true)]
+    pub ids: Vec<String>,
+
+    /// The version id of the mod to add, ignores compatability checks
+    #[arg(long, short = 'v')]
+    pub version: Option<i32>
+}
+
+#[derive(clap::Args)]
+pub struct AddGithubArgs {
+    /// The repository to add mods from,
+    /// github url or owner/repo accepted
+    #[arg(required = true)]
+    pub repo: String,
+    
+    /// The release tag to use
+    #[arg(long, short = 't')]
+    pub tag: Option<String>,
+
+    /// Use the first release asset
+    #[arg(long, short = 'f')]
+    pub first_asset: bool
 }
 
 #[derive(Subcommand)]
 pub enum ImportCommmands {
     /// Import from an mrpack file
     #[command(visible_aliases = ["mr", "mrpack"])]
-    Modrinth {
-        /// Path to mrpack file
-        path: PathBuf
-    },
+    Modrinth(ImportModrinthArgs),
 
     /// Import from a curseforge pack zip file
     #[command(visible_alias = "cf")]
-    Curseforge {
-        /// Path to pack zip file
-        path: PathBuf
-    },
+    Curseforge(ImportCurseforgeArgs),
 
     /// Import from a packwiz pack
     #[command(visible_alias = "pw")]
-    Packwiz {
-        /// Url or file path to a packwiz pack.toml file
-        source: String
-    }
+    Packwiz(ImportPackwizArgs)
+}
+
+#[derive(clap::Args)]
+pub struct ImportModrinthArgs {
+    /// Path to mrpack file
+    pub path: PathBuf
+}
+
+#[derive(clap::Args)]
+pub struct ImportCurseforgeArgs {
+    /// Path to pack zip file
+    pub path: PathBuf
+}
+
+#[derive(clap::Args)]
+pub struct ImportPackwizArgs {
+    /// Url or file path to a packwiz pack.toml file
+    pub source: String
 }
 
 #[derive(Subcommand)]
 pub enum ExportCommands {
     /// Export to mrpack format
     #[command(visible_aliases = ["mr", "mrpack"])]
-    Modrinth {
-        /// Path to mrpack overrides
-        #[arg(long, short = 'o')]
-        overrides_path: Option<PathBuf>
-    },
+    Modrinth(ExportModrinthArgs),
 
     /// Export to a curseforge pack
     #[command(visible_alias = "cf")]
-    Curseforge {
-        /// Path to overrides
-        #[arg(long, short = 'o')]
-        overrides_path: Option<PathBuf>
-    },
+    Curseforge(ExportCurseforgeArgs),
 
     /// Export to a packwiz pack
     #[command(visible_alias = "pw")]
-    Packwiz {
-        /// Output folder path
-        export_path: PathBuf
-    }
+    Packwiz(ExportPackwizArgs)
+}
+
+#[derive(clap::Args)]
+pub struct ExportModrinthArgs {
+    /// Path to mrpack overrides
+    #[arg(long, short = 'o')]
+    pub overrides_path: Option<PathBuf>
+}
+
+#[derive(clap::Args)]
+pub struct ExportCurseforgeArgs {
+    /// Path to overrides
+    #[arg(long, short = 'o')]
+    pub overrides_path: Option<PathBuf>
+}
+
+#[derive(clap::Args)]
+pub struct ExportPackwizArgs {
+    /// Output folder path
+    pub export_path: PathBuf
 }
 
 #[derive(Subcommand)]

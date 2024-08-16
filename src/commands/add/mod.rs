@@ -10,9 +10,9 @@ pub mod modrinth;
 
 pub async fn add(args: AddArgs) -> Result<()> {
     match args.subcommand {
-        AddCommands::Modrinth { ids, version } => modrinth::add_modrinth(ids, version).await,
-        AddCommands::Github { repo, tag, first_asset } => github::add_github(repo, tag, first_asset).await,
-        AddCommands::Curseforge { ids, version } => curseforge::add_curseforge(ids, version).await
+        AddCommands::Modrinth(args) => modrinth::add_modrinth(args).await,
+        AddCommands::Curseforge(args) => curseforge::add_curseforge(args).await,
+        AddCommands::Github(args) => github::add_github(args).await
     }
 }
 
