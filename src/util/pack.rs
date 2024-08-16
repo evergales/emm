@@ -2,6 +2,8 @@ use std::{env, fs, path::PathBuf};
 
 use crate::{error::{Error, Result}, structs::pack::Modpack};
 
+use super::versions::get_latest_loader_version;
+
 impl Modpack {
     pub fn path() -> PathBuf {
         env::current_dir().unwrap().join("pack.toml")
@@ -18,5 +20,12 @@ impl Modpack {
         let str = toml::to_string(modpack).unwrap();
         fs::write(Self::path(), str)?;
         Ok(())
+    }
+
+    pub async fn get_loader_version(&self) -> Result<String> {
+        match self.versions.loader_version.as_str() {
+            "latest" => get_latest_loader_version(&self.versions.loader, &self.versions.minecraft).await,
+            _ => Ok(self.versions.loader_version.clone())
+        }
     }
 }

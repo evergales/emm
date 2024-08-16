@@ -32,8 +32,6 @@ pub async fn init(args: InitArgs) -> Result<()> {
         None => pick_loader().await?,
     };
 
-    let loader_version = get_latest_loader_version(&loader, &game_version).await?;
-
     Modpack::write(&Modpack {
         name,
         version: "0.1.0".into(),
@@ -44,7 +42,7 @@ pub async fn init(args: InitArgs) -> Result<()> {
         versions: Versions {
             minecraft: game_version,
             loader,
-            loader_version,
+            loader_version: "latest".into(),
         },
     })?;
 
