@@ -16,7 +16,7 @@ pub enum Error {
     #[error("{0} loader has no available versions for {1}")]
     NoLoaderSupport(String, String),
 
-    #[error("{0} has no compatible versions with your modpack")]
+    #[error("No compatible versions found for {0}")]
     NoCompatibleVersions(String),
 
     #[error("Unable to add {0} because its project type is unsupported")]

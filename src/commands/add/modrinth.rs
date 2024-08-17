@@ -23,6 +23,7 @@ pub async fn add_modrinth(args: AddModrinthArgs) -> Result<()> {
             Ok(addon) => addons.push(addon),
             Err(err) => match err {
                 Error::NotFound(_) | Error::InvalidId(_) => to_search.push(id.as_str()),
+                Error::NoCompatibleVersions(_) | Error::UnsupportedProjectType(_) => println!("{}", style(&err.to_string()).color256(166)), //these are fine to warn and skip
                 _ => return Err(err)
             },
         };
@@ -128,6 +129,7 @@ async fn search_ids(modpack: &Modpack, strings: &[&str]) -> Result<Vec<Addon>> {
             let selected = Select::new()
                     .with_prompt(format!("search results for '{}'", string))
                     .items(&titles)
+                    .report(false)
                     .interact_opt()
                     .unwrap();
 
