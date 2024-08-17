@@ -58,7 +58,7 @@ pub async fn import_modrinth(args: ImportModrinthArgs) -> Result<()> {
                 version: version.1.id.clone(),
             }),
             options: Some(AddonOptions::default()),
-            filename: None,
+            filename: Some(format!("{}.toml", project.slug)),
             
         }
     }).collect();
@@ -99,7 +99,7 @@ pub async fn import_modrinth(args: ImportModrinthArgs) -> Result<()> {
                     version: version_file.id
                 }),
                 options: Some(AddonOptions::default()),
-                filename: None
+                filename: Some(format!("{}.toml", addon.slug))
             });
 
             let file_path = override_mods_dir.join(version_file.file_name.clone());
@@ -110,7 +110,7 @@ pub async fn import_modrinth(args: ImportModrinthArgs) -> Result<()> {
 
         if fs::read_dir(&override_mods_dir)?.count() == 0 {
             fs::remove_dir(&override_mods_dir)?;
-        } 
+        }
     }
 
     Index::write_addons(addons).await?;

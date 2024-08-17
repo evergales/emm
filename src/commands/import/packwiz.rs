@@ -52,7 +52,6 @@ pub async fn import_packwiz(args: ImportPackwizArgs) -> Result<()> {
         }
     }?;
 
-
     let modpack = Modpack {
         name: source_pack.name,
         version: source_pack.version.unwrap_or("0.1.0".into()),

@@ -26,6 +26,7 @@ pub struct Mod {
     pub id: i32,
     pub game_id: i32,
     pub name: String,
+    pub slug: String,
     pub links: ModLinks,
     pub summary: String,
     pub class_id: Option<i32>,
