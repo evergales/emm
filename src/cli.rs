@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
 
-use crate::structs::pack::ModLoader;
+use crate::structs::{self, pack::ModLoader};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -268,5 +268,12 @@ pub enum MigrateCommands {
 
     /// Migrate to a new minecraft version
     #[command(visible_alias = "mc")]
-    Minecraft
+    Minecraft(MigrateMinecraftArgs)
+}
+
+#[derive(clap::Args)]
+pub struct MigrateMinecraftArgs {
+    /// Show snapshots in version select
+    #[arg(long, short = 's', visible_alias = "snapshots")]
+    pub show_snapshots: bool
 }

@@ -33,8 +33,8 @@ async fn main() {
         Commands::Pin(args) => commands::pin::pin(args).await,
         Commands::Unpin(args) => commands::unpin::unpin(args).await,
         Commands::List(args) => commands::list::list(args).await,
+        Commands::Migrate(args) => commands::migrate::run(args).await,
         /*
-        Commands::Migrate { subcommand } => todo!(),
         Commands::Completion { shell } => todo!(),
         */
         _ => unimplemented!()
