@@ -44,7 +44,7 @@ pub enum Commands {
     /// Export your modpack
     Export(ExportArgs),
 
-    /// Migrate your modpack to a new minecraft or mod loader version
+    /// Migrate your modpack to a new minecraft version
     Migrate(MigrateArgs),
 
     /// Print shell completions for specified shell
@@ -135,8 +135,9 @@ pub struct ExportArgs {
 
 #[derive(clap::Args)]
 pub struct MigrateArgs {
-    #[command(subcommand)]
-    pub subcommand: MigrateCommands
+    /// Show snapshots in version select
+    #[arg(long, short = 's', visible_alias = "snapshots")]
+    pub show_snapshots: bool
 }
 
 #[derive(Subcommand)]
@@ -258,22 +259,4 @@ pub struct ExportCurseforgeArgs {
 pub struct ExportPackwizArgs {
     /// Output folder path
     pub export_path: PathBuf
-}
-
-#[derive(Subcommand)]
-pub enum MigrateCommands {
-    /// Migrate to a new loader version
-    #[command(visible_alias = "l")]
-    Loader,
-
-    /// Migrate to a new minecraft version
-    #[command(visible_alias = "mc")]
-    Minecraft(MigrateMinecraftArgs)
-}
-
-#[derive(clap::Args)]
-pub struct MigrateMinecraftArgs {
-    /// Show snapshots in version select
-    #[arg(long, short = 's', visible_alias = "snapshots")]
-    pub show_snapshots: bool
 }
