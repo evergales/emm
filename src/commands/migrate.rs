@@ -3,7 +3,7 @@ use std::fmt::Write;
 use console::style;
 use dialoguer::Confirm;
 
-use crate::{cli::MigrateMinecraftArgs, commands::init::pick_game_version, error::Result, structs::{index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ProjectType}, pack::{ModLoader, Modpack}}, util::versions::get_latest_loader_version, CURSEFORGE, MODRINTH};
+use crate::{cli::MigrateArgs, commands::init::pick_game_version, error::Result, structs::{index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ProjectType}, pack::{ModLoader, Modpack}}, util::versions::get_latest_loader_version, CURSEFORGE, MODRINTH};
 
 enum Compatibility {
     Compatible,
@@ -12,7 +12,7 @@ enum Compatibility {
     Unknown // cant check compatibility
 }
 
-pub async fn migrate_minecraft(args: MigrateMinecraftArgs) -> Result<()> {
+pub async fn migrate(args: MigrateArgs) -> Result<()> {
     let mut modpack = Modpack::read()?;
     let index = Index::read().await?;
 
