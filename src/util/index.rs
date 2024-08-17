@@ -3,7 +3,7 @@ use std::{env, fs, path::PathBuf, sync::Arc};
 use dialoguer::FuzzySelect;
 use tokio::{sync::Semaphore, task::JoinSet};
 
-use crate::{error::{Error, Result}, structs::{index::{Addon, AddonSource, Index}, pack::Modpack}};
+use crate::{error::{Error, Result}, structs::{index::{Addon, AddonSource, Index, ProjectType}, pack::Modpack}};
 
 use super::files::is_local_path;
 

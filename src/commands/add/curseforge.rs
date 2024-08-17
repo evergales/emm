@@ -23,6 +23,7 @@ pub async fn add_curseforge(args: AddCurseforgeArgs) -> Result<()> {
             Ok(addon) => addons.push(addon),
             Err(err) => match err {
                 Error::NotFound(_) | Error::InvalidId(_) => to_search.push(id.as_str()),
+                Error::NoCompatibleVersions(err) => println!("{}", style(&err.to_string()).color256(166)),
                 _ => return Err(err)
             },
         };
@@ -91,7 +92,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<i32>) -> Re
     ).collect::<Vec<File>>();
 
     if compatibles.is_empty() {
-        return Err(Error::Other(style(format!("No compatible versions found for mod: '{}'", cf_mod.name)).color256(166).to_string()));
+        return Err(Error::NoCompatibleVersions(cf_mod.name));
     }
 
     Ok(Addon {
@@ -126,6 +127,7 @@ async fn search_ids(modpack: &Modpack, strings: &[&str]) -> Result<Vec<Addon>> {
             let selected = Select::new()
                     .with_prompt(format!("search results for '{}'", string))
                     .items(&titles)
+                    .report(false)
                     .interact_opt()
                     .unwrap();
 

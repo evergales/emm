@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::{fmt::Write, sync::{Arc, Mutex}};
 
 use console::style;
 
@@ -20,17 +20,20 @@ pub async fn add_to_index(addons: Vec<Addon>) -> Result<()> {
     let index = Index::read().await?;
     let mut to_add = Vec::new();
 
+    let mut out = format!("Adding{}", if addons.len() > 1 {":\n"} else {" "});
+
     for addon in addons {
         // checking the name as well so you cant add the same mod from both modrinth or curseforge
         if index.addons.iter().any(|idx_mod| idx_mod.name == addon.name || idx_mod.generic_id() == addon.generic_id()) {
-            println!("{}", style(addon.name + " is already in the modpack").color256(166));
+            writeln!(&mut out, "{} {}", &addon.name, style("(already in the modpack)").dim()).unwrap();
             continue;
         }
 
-        println!("Adding {}", addon.name);
+        writeln!(&mut out, "{}", &addon.name).unwrap();
         to_add.push(addon)
     }
 
+    print!("{}", out);
     Index::write_addons(to_add).await?;
     Ok(())
 }
