@@ -102,7 +102,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<&str>) -> R
             version: version.id,
         }),
         options: Some(AddonOptions::default()),
-        filename: None
+        filename: Some(format!("{}.toml", project.slug))
     })
 }
 

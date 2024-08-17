@@ -104,7 +104,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<i32>) -> Re
             version: compatibles.first().unwrap().id,
         }),
         options: Some(AddonOptions::default()),
-        filename: None
+        filename: Some(format!("{}.toml", cf_mod.slug))
     })
 }
 

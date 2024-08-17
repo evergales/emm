@@ -11,6 +11,7 @@ use crate::{
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Project {
+    pub slug: String,
     pub title: String,
     pub description: String,
     pub client_side: SideSupportType,
