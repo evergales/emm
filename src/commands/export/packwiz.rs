@@ -1,5 +1,6 @@
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{collections::HashMap, fs, path::PathBuf, time::Duration};
 
+use indicatif::ProgressBar;
 use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Digest};
 use tokio::try_join;
@@ -14,6 +15,9 @@ pub async fn export_packwiz(args: ExportPackwizArgs) -> Result<()> {
     let modpack = Modpack::read()?;
     let index = Index::read().await?;
 
+    let progress = ProgressBar::new_spinner().with_message("Exporting to packwiz pack");
+    progress.enable_steady_tick(Duration::from_millis(100));
+
     let mut mr_sources = Vec::new();
     let mut cf_sources = Vec::new();
     let mut gh_sources = Vec::new();
@@ -24,6 +28,7 @@ pub async fn export_packwiz(args: ExportPackwizArgs) -> Result<()> {
         AddonSource::Github(source) => gh_sources.push((a, source)),
     });
 
+    progress.set_message("Gathering info");
     let mr_version_ids = mr_sources.iter().map(|a| a.1.version.as_str()).collect::<Vec<&str>>();
     let cf_version_ids = cf_sources.iter().map(|a| (a.1.id, a.1.version)).collect::<Vec<(i32, i32)>>();
     let (mr_versions, cf_files) = try_join!(
@@ -153,6 +158,8 @@ pub async fn export_packwiz(args: ExportPackwizArgs) -> Result<()> {
     };
     let pwpack_str = toml::to_string_pretty(&pwpack).unwrap();
 
+    progress.set_message("Writing files");
+
     fs::write(args.export_path.join("pack.toml"), pwpack_str)?;
     fs::write(args.export_path.join("index.toml"), pwindex_str)?;
 
@@ -165,6 +172,7 @@ pub async fn export_packwiz(args: ExportPackwizArgs) -> Result<()> {
         fs::write(full_path, file.pwmod_str)?;
     }
     
+    progress.finish_with_message(format!("Exported to {}", args.export_path.to_string_lossy()));
     Ok(())
 }
 
