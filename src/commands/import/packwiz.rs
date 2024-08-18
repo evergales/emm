@@ -1,5 +1,6 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, time::Duration};
 
+use indicatif::ProgressBar;
 use serde::de::DeserializeOwned;
 use tokio::task::JoinSet;
 
@@ -16,7 +17,12 @@ pub async fn import_packwiz(args: ImportPackwizArgs) -> Result<()> {
         }
     }
 
+    let progress = ProgressBar::new_spinner().with_message("Importing packwiz pack");
+    progress.enable_steady_tick(Duration::from_millis(100));
+
     let base_path = args.source.strip_suffix("/pack.toml").unwrap().to_string();
+
+    progress.set_message("Reading pack files");
 
     let source_pack: PwPack = PwFile::from(&args.source).get_content().await?;
     let file_index: PwIndex = PwFile::from(format!("{}/{}", base_path, source_pack.index.file)).get_content().await?;
@@ -52,6 +58,8 @@ pub async fn import_packwiz(args: ImportPackwizArgs) -> Result<()> {
         }
     }?;
 
+    progress.set_message("Importing pack");
+
     let modpack = Modpack {
         name: source_pack.name,
         version: source_pack.version.unwrap_or("0.1.0".into()),
@@ -68,7 +76,7 @@ pub async fn import_packwiz(args: ImportPackwizArgs) -> Result<()> {
 
     Modpack::write(&modpack)?;
     Index::write_addons(addons).await?;
-    println!("Imported {}", modpack.name);
+    progress.finish_with_message(format!("Imported {}", modpack.name));
     Ok(())
 }
 

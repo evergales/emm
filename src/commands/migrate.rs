@@ -1,7 +1,9 @@
-use std::fmt::Write;
+use std::{fmt::Write, ops::Deref, sync::Arc, time::Duration};
 
 use console::style;
 use dialoguer::Confirm;
+use indicatif::ProgressBar;
+use tokio::task::JoinSet;
 
 use crate::{cli::MigrateArgs, commands::init::pick_game_version, error::Result, structs::{index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ProjectType}, pack::{ModLoader, Modpack}}, util::versions::get_latest_loader_version, CURSEFORGE, MODRINTH};
 
@@ -12,11 +14,17 @@ enum Compatibility {
     Unknown // cant check compatibility
 }
 
+// (addon, new_addon_version, compatibility)
+type AddonCompat = (Addon, Option<String>, Compatibility);
+
 pub async fn migrate(args: MigrateArgs) -> Result<()> {
-    let mut modpack = Modpack::read()?;
+    let modpack = Arc::new(Modpack::read()?);
     let index = Index::read().await?;
 
-    let new_version = pick_game_version(args.show_snapshots).await?;
+    let new_version = Arc::new(pick_game_version(args.show_snapshots).await?);
+
+    let progress = ProgressBar::new_spinner().with_message("Finding compatible versions");
+    progress.enable_steady_tick(Duration::from_millis(100));
 
     let mut mr_addons = Vec::new();
     let mut cf_addons = Vec::new();
@@ -27,66 +35,80 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
         AddonSource::Github(_) => gh_addons.push(a)
     });
 
-    // (addon, new_addon_version, compatibility)
-    let mut to_migrate: Vec<(Addon, Option<String>, Compatibility)> = Vec::new();
+    let mut to_migrate: Vec<AddonCompat> = Vec::new();
+    let mut tasks: JoinSet<Result<AddonCompat>> = JoinSet::new();
 
     for addon in mr_addons {
-        let versions = MODRINTH.get_project_versions(&addon.1).await?;
-
-        let (compatibility, version) = 'compat: {
-            if !versions.iter().any(|v| match addon.0.project_type {
-                ProjectType::Mod => v.loaders.contains(&modpack.versions.loader.to_string().to_lowercase()),
-                _ => true // ignore loader checks if not a mod
-            }) {
-                break 'compat (Compatibility::Incompatible, None);
-            }
-            
-            if let Some(version) = versions.iter().find(|v| v.game_versions.contains(&new_version)) {
-                break 'compat (Compatibility::Compatible, Some(version.id.clone()));
-            }
-
-            if let Some(acceptable_versions) = &modpack.options.acceptable_versions {
-                if let Some(version) = versions.iter().find(|v| v.game_versions.iter().any(|v| acceptable_versions.contains(v))) {
-                    break 'compat (Compatibility::Partial, Some(version.id.clone()));
+        let modpack = modpack.clone();
+        let new_version = new_version.clone();
+        let task = async move {
+            let versions = MODRINTH.get_project_versions(&addon.1).await?;
+    
+            let (compatibility, version) = 'compat: {
+                if !versions.iter().any(|v| match addon.0.project_type {
+                    ProjectType::Mod => v.loaders.contains(&modpack.versions.loader.to_string().to_lowercase()),
+                    _ => true // ignore loader checks if not a mod
+                }) {
+                    break 'compat (Compatibility::Incompatible, None);
                 }
-            }
+                
+                if let Some(version) = versions.iter().find(|v| v.game_versions.contains(&new_version)) {
+                    break 'compat (Compatibility::Compatible, Some(version.id.clone()));
+                }
+    
+                if let Some(acceptable_versions) = &modpack.options.acceptable_versions {
+                    if let Some(version) = versions.iter().find(|v| v.game_versions.iter().any(|v| acceptable_versions.contains(v))) {
+                        break 'compat (Compatibility::Partial, Some(version.id.clone()));
+                    }
+                }
+    
+                (Compatibility::Incompatible, None)
+            };
 
-            (Compatibility::Incompatible, None)
+            Ok((addon.0, version, compatibility))
         };
 
-        to_migrate.push((addon.0, version, compatibility))
+        tasks.spawn(task);
     };
     
     for addon in cf_addons {
-        let files = CURSEFORGE.get_mod_files(&addon.1).await?;
-
-        let (compatibility, version) = 'compat: {
-            if !files.iter().any(|f| match addon.0.project_type {
-                ProjectType::Mod => f.game_versions.contains(&modpack.versions.loader.to_string()),
-                _ => true // ignore loader checks if not a mod
-            }) {
-                break 'compat (Compatibility::Incompatible, None);
-            }
-            
-            if let Some(file) = files.iter().find(|f| f.game_versions.contains(&new_version)) {
-                break 'compat (Compatibility::Compatible, Some(file.id));
-            }
-
-            if let Some(acceptable_versions) = &modpack.options.acceptable_versions {
-                if let Some(file) = files.iter().find(|f| f.game_versions.iter().any(|v| acceptable_versions.contains(v))) {
-                    break 'compat (Compatibility::Partial, Some(file.id));
+        let modpack = modpack.clone();
+        let new_version = new_version.clone();
+        let task = async move {
+            let files = CURSEFORGE.get_mod_files(&addon.1).await?;
+    
+            let (compatibility, version) = 'compat: {
+                if !files.iter().any(|f| match addon.0.project_type {
+                    ProjectType::Mod => f.game_versions.contains(&modpack.versions.loader.to_string()),
+                    _ => true // ignore loader checks if not a mod
+                }) {
+                    break 'compat (Compatibility::Incompatible, None);
                 }
-            }
+                
+                if let Some(file) = files.iter().find(|f| f.game_versions.contains(&new_version)) {
+                    break 'compat (Compatibility::Compatible, Some(file.id));
+                }
+    
+                if let Some(acceptable_versions) = &modpack.options.acceptable_versions {
+                    if let Some(file) = files.iter().find(|f| f.game_versions.iter().any(|v| acceptable_versions.contains(v))) {
+                        break 'compat (Compatibility::Partial, Some(file.id));
+                    }
+                }
+    
+                (Compatibility::Incompatible, None)
+            };
 
-            (Compatibility::Incompatible, None)
+            Ok((addon.0, version.map(|v| v.to_string()), compatibility))
         };
 
-        to_migrate.push((addon.0, version.map(|v| v.to_string()), compatibility))
+        tasks.spawn(task);
     }
 
-    for addon in gh_addons {
-        to_migrate.push((addon, None, Compatibility::Unknown))
-    }
+    while let Some(res) = tasks.join_next().await { to_migrate.push(res??) }
+
+    to_migrate.extend(gh_addons.into_iter().map(|addon| (addon, None, Compatibility::Unknown)));
+
+    progress.finish_and_clear();
 
     let compatible_count = to_migrate.iter().filter(|(_, _, c)| matches!(c, Compatibility::Compatible)).count();
     let partial_count = to_migrate.iter().filter(|(_, _, c)| matches!(c, Compatibility::Partial)).count();
@@ -137,11 +159,13 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
         }).collect::<Vec<&Addon>>()).await?;
     }
 
+    let mut modpack = Arc::into_inner(modpack).unwrap();
+    let new_version = Arc::into_inner(new_version).unwrap();
     modpack.versions.loader_version = match modpack.versions.loader_version.as_str() {
         "latest" => "latest".into(),
         _ => get_latest_loader_version(&modpack.versions.loader, &new_version).await?
     };
-    modpack.versions.minecraft = new_version;
+    modpack.versions.minecraft.clone_from(&new_version);
     Modpack::write(&modpack)?;
 
     let migrated_addons: Vec<Addon> = to_migrate.into_iter().filter_map(|(addon, version, _)| version.map(|version| Addon {
@@ -154,5 +178,6 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
     })).collect();
 
     Index::write_addons(migrated_addons).await?;
+    println!("Migrated to {}", new_version);
     Ok(())
 }

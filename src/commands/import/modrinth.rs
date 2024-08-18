@@ -22,22 +22,6 @@ pub async fn import_modrinth(args: ImportModrinthArgs) -> Result<()> {
     let mc_version = mrpack.dependencies.get(&PackDependency::Minecraft).unwrap().clone();
     let (mod_loader, loader_version) = mrpack.dependencies.into_iter().find(|v| v.0 != PackDependency::Minecraft).unwrap();
 
-    let modpack = Modpack {
-        name: mrpack.name,
-        version: mrpack.version_id,
-        authors: vec![],
-        description: mrpack.summary,
-        index_path: "./index".into(),
-        options: PackOptions::default(),
-        versions: Versions {
-            minecraft: mc_version,
-            loader: mod_loader.try_into()?,
-            loader_version,
-        },
-    };
-
-    Modpack::write(&modpack)?;
-
     progress.set_message("Adding mods");
 
     // find projects from the hashes provided in mrpack files
@@ -113,6 +97,23 @@ pub async fn import_modrinth(args: ImportModrinthArgs) -> Result<()> {
         }
     }
 
+    progress.set_message("Importing pack");
+
+    let modpack = Modpack {
+        name: mrpack.name,
+        version: mrpack.version_id,
+        authors: vec![],
+        description: mrpack.summary,
+        index_path: "./index".into(),
+        options: PackOptions::default(),
+        versions: Versions {
+            minecraft: mc_version,
+            loader: mod_loader.try_into()?,
+            loader_version,
+        },
+    };
+
+    Modpack::write(&modpack)?;
     Index::write_addons(addons).await?;
     progress.finish_with_message(format!("Imported {}", modpack.name));
     Ok(())

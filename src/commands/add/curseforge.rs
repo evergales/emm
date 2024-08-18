@@ -1,8 +1,9 @@
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, time::Duration};
 
 use async_recursion::async_recursion;
 use console::style;
 use dialoguer::Select;
+use indicatif::ProgressBar;
 use tokio::{task::JoinSet, try_join};
 
 use crate::{api::curseforge::{File, FileDependency, FileRelationType}, cli::AddCurseforgeArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ProjectType, Side}, pack::Modpack}, CURSEFORGE};
@@ -11,6 +12,8 @@ use super::{add_to_index, handle_checked};
 
 pub async fn add_curseforge(args: AddCurseforgeArgs) -> Result<()> {
     let modpack = Arc::new(Modpack::read()?);
+    let progress = ProgressBar::new_spinner().with_message("Adding mods");
+    progress.enable_steady_tick(Duration::from_millis(100));
 
     if args.ids.len() > 1 && args.version.is_some() {
         return Err(Error::Other("Only use the -v/--version flag when adding 1 mod".into()));
@@ -19,6 +22,9 @@ pub async fn add_curseforge(args: AddCurseforgeArgs) -> Result<()> {
     let mut to_search = Vec::new();
     let mut addons = Vec::new();
     for (idx, id) in args.ids.iter().enumerate() {
+        if !args.ids.len() == 1 {
+            progress.set_message(format!("Adding mods {}/{}", idx + 1, args.ids.len()))
+        }
         match resolve_mod(&modpack, id, args.version).await {
             Ok(addon) => addons.push(addon),
             Err(err) => match err {
@@ -29,7 +35,10 @@ pub async fn add_curseforge(args: AddCurseforgeArgs) -> Result<()> {
         };
     }
 
-    addons.extend(search_ids(&modpack, to_search.as_slice()).await?);
+    let search_res = progress.suspend(|| async { search_ids(&modpack, to_search.as_slice()).await }).await?;
+    addons.extend(search_res);
+
+    progress.set_message("Finding dependencies");
 
     let index_addons = Index::read().await?.addons;
     let checked_ids = Arc::new(Mutex::new(
@@ -54,6 +63,7 @@ pub async fn add_curseforge(args: AddCurseforgeArgs) -> Result<()> {
     // wait for tasks to finish and push dependencies to addons
     while let Some(res) = tasks.join_next().await { addons.extend(res??) }
 
+    progress.finish_and_clear();
     add_to_index(addons).await?;
     Ok(())
 }

@@ -1,5 +1,6 @@
-use std::{collections::HashMap, env, fs, io::Write, path::{Path, PathBuf}, sync::Arc};
+use std::{collections::HashMap, env, fs, io::Write, path::{Path, PathBuf}, sync::Arc, time::Duration};
 
+use indicatif::ProgressBar;
 use tokio::{sync::Semaphore, task::JoinSet};
 use zip::{write::SimpleFileOptions, ZipWriter};
 
@@ -13,6 +14,9 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
     let modpack = Arc::new(Modpack::read()?);
     let index = Index::read().await?;
 
+    let progress = ProgressBar::new_spinner().with_message("Exporting to mrpack");
+    progress.enable_steady_tick(Duration::from_millis(100));
+
     // Vec<(Source, ProjectType)>
     let mut mr_addons = Vec::new();
     let mut cf_addons = Vec::new();
@@ -23,6 +27,8 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
         AddonSource::Curseforge(source) => cf_addons.push((source, a.project_type)),
         AddonSource::Github(source) => gh_addons.push((source, a.project_type))
     });
+
+    progress.set_message("Exporting modrinth mods");
 
     let mr_versions = MODRINTH.get_versions(
         mr_addons
@@ -72,6 +78,8 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
     let cache_dir = env::temp_dir().join(format!("emm-export-cache-{}", std::process::id()));
     let mod_overrides = if !cf_addons.is_empty() || !gh_addons.is_empty() { Some(&cache_dir) } else { None };
     if !cf_addons.is_empty() || !gh_addons.is_empty() {
+        progress.set_message("Adding non-modrinth mods to overrides");
+        
         fs::create_dir(&cache_dir)?;
         // (file_path, download_url)
         let mut to_download: Vec<(PathBuf, String)> = Vec::new();
@@ -106,6 +114,7 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
             while let Some(res) = tasks.join_next().await { to_download.push(res??) };
         }
 
+        progress.set_message("Downloading non-modrinth mods");
         let permits = Arc::new(Semaphore::new(10)); // limit file downloads to 10 at a time
         let mut tasks: JoinSet<Result<()>> = JoinSet::new();
         for file in to_download {
@@ -128,11 +137,14 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
         while let Some(res) = tasks.join_next().await { res?? };
     }
 
+    progress.set_message("Creating mrpack file");
     create_mrpack(&env::current_dir()?, &metadata, args.overrides_path.as_ref(), mod_overrides).unwrap();
     if cache_dir.is_dir() {
         fs::remove_dir_all(cache_dir)?;
     }
 
+    let output_file = env::current_dir()?.join(format!("{}-{}.mrpack", metadata.name, metadata.version_id)).to_string_lossy().to_string();
+    progress.finish_with_message(format!("Exported to {}", output_file));
     Ok(())
 }
 
