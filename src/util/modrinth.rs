@@ -1,7 +1,8 @@
 use crate::{api::modrinth::{SideSupportType, VersionFile}, error::{Error, Result}, structs::index::Side};
 
 pub fn primary_file(files: Vec<VersionFile>) -> VersionFile {
-    files.into_iter().find(|f| f.primary).unwrap()
+    let first = files.first().unwrap().clone();
+    files.into_iter().find(|f| f.primary).unwrap_or(first)
 }
 
 pub fn get_primary_hash(files: Vec<VersionFile>) -> Result<String> {
