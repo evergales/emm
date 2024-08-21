@@ -4,17 +4,26 @@ use console::style;
 use tokio::{task::JoinSet, try_join};
 
 use crate::{
-    api::{curseforge::File, github::GithubRelease, modrinth::Version}, error::Result, structs::{
+    api::{curseforge::File, github::GithubRelease, modrinth::Version}, cli::UpdateArgs, error::Result, structs::{
         index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource},
         pack::Modpack,
     }, util::{modrinth::get_primary_hash, to_hyperlink}, CURSEFORGE, GITHUB, MODRINTH
 };
 
-pub async fn update() -> Result<()> {
+pub async fn update(args: UpdateArgs) -> Result<()> {
     let modpack = Arc::new(Modpack::read()?);
     let mut index = Index::read().await?;
-    // filter out pinned mods so they dont get updated
-    index.addons.retain(|a| !a.options.as_ref().is_some_and(|a| a.pinned));
+
+    // only use the addons in args if there are any
+    if let Some(addons) = &args.addons {
+        let selected_addons: Vec<Addon> = addons.iter().filter_map(|str| index.select_addon(str)).cloned().collect();
+        index.addons = selected_addons
+    }
+
+    if args.addons.is_none() {
+        // filter out pinned mods so they dont get updated
+        index.addons.retain(|a| !a.options.as_ref().is_some_and(|a| a.pinned));
+    }
 
     let mut mr_addon_versions = Vec::new();
     let mut cf_addon_ids = Vec::new();
@@ -93,6 +102,7 @@ pub async fn update() -> Result<()> {
 }
 
 async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Result<HashMap<String, Version>> {
+    if mr_addon_versions.is_empty() { return Ok(Default::default()); }
     let mr_version_hashes: Vec<String> = MODRINTH
         .get_versions(mr_addon_versions.as_slice())
         .await?
@@ -117,6 +127,7 @@ async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Res
 }
 
 async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<i32>) -> Result<(Vec<File>, Vec<(i32, String)>)> {
+    if cf_addon_ids.is_empty() { return Ok(Default::default()); }
     let mut tasks: JoinSet<Result<Option<File>>> = JoinSet::new();
     for id in cf_addon_ids.clone() {
         let modpack = modpack.clone();
@@ -151,6 +162,7 @@ async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<i32>) -> Result<
 }
 
 async fn update_github(gh_addon_sources: Vec<String>) -> Result<Vec<(String, GithubRelease)>> {
+    if gh_addon_sources.is_empty() { return Ok(Default::default()); }
     // pair of repo & latest compatible release
     let mut tasks: JoinSet<Result<(String, Option<GithubRelease>)>> = JoinSet::new();
     for repo in gh_addon_sources {

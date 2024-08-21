@@ -27,7 +27,7 @@ async fn main() {
         Commands::Init(args) => commands::init::init(args).await,
         Commands::Add(args) => commands::add::add(args).await,
         Commands::Remove(args) => commands::remove::remove(args).await,
-        Commands::Update => commands::update::update().await,
+        Commands::Update(args) => commands::update::update(args).await,
         Commands::Import(args) => commands::import::run(args).await,
         Commands::Export(args) => commands::export::run(args).await,
         Commands::Pin(args) => commands::pin::pin(args).await,

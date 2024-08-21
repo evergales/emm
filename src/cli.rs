@@ -17,22 +17,22 @@ pub enum Commands {
     #[command(alias = "i")]
     Init(InitArgs),
 
-    /// Add a mod to the current pack
+    /// Add a project to the current pack
     #[command(alias = "a")]
     Add(AddArgs),
 
-    /// Remove a mod from the current pack
+    /// Remove a project from the current pack
     #[command(aliases = ["rm", "r"])]
     Remove(RemoveArgs),
 
-    /// Update all mods in this modpack
+    /// Update all addons in this modpack
     #[command(alias = "up")]
-    Update,
+    Update(UpdateArgs),
 
-    /// Pin a mod to exclude it from updates
+    /// Pin an addon to exclude it from updates
     Pin(PinArgs),
 
-    /// Unpin a mod to reinclude it in updates
+    /// Unpin an addon to reinclude it in updates
     Unpin(UnpinArgs),
 
     /// List all addons in this modpack
@@ -86,21 +86,26 @@ pub struct InitArgs {
 }
 
 #[derive(clap::Args)]
-pub struct RemoveArgs {
-    /// List of mod names/ids you want to remove from this modpack
-    #[arg(required = true)]
-    pub mods: Vec<String>
-}
-
-#[derive(clap::Args)]
 pub struct AddArgs {
     #[command(subcommand)]
     pub subcommand: AddCommands
 }
 
 #[derive(clap::Args)]
+pub struct RemoveArgs {
+    /// List of addon names/ids you want to remove from this modpack
+    pub addons: Vec<String>
+}
+
+#[derive(clap::Args)]
+pub struct UpdateArgs {
+    /// List of addon names/ids to update
+    pub addons: Option<Vec<String>>
+}
+
+#[derive(clap::Args)]
 pub struct PinArgs {
-    /// A mod name/id you want to pin
+    /// An addon name/id you want to pin
     pub addon: String,
 
     /// Version id to pin the addon to
@@ -110,13 +115,13 @@ pub struct PinArgs {
 
 #[derive(clap::Args)]
 pub struct UnpinArgs {
-    /// A mod name/id you want to unpin
+    /// An addon name/id you want to unpin
     pub addon: String
 }
 
 #[derive(clap::Args)]
 pub struct ListArgs {
-    /// List mods in markdown format
+    /// List addons in markdown format
     #[arg(long, short = 'm')]
     pub markdown: bool
 }
@@ -142,15 +147,15 @@ pub struct MigrateArgs {
 
 #[derive(Subcommand)]
 pub enum AddCommands {
-    /// Add mods from modrinth
+    /// Add projects from modrinth
     #[command(visible_alias = "mr")]
     Modrinth(AddModrinthArgs),
 
-    /// Add mods from curseforge
+    /// Add projects from curseforge
     #[command(visible_alias = "cf")]
     Curseforge(AddCurseforgeArgs),
 
-    /// Add mods from a github repo's releases
+    /// Add projects from a github repo's releases
     #[command(visible_alias = "gh")]
     Github(AddGithubArgs)
 }
@@ -161,7 +166,7 @@ pub struct AddModrinthArgs {
     #[arg(required = true)]
     pub ids: Vec<String>,
 
-    /// The version id of the mod to add, ignores compatability checks
+    /// The version id of the project to add, ignores compatability checks
     #[arg(long, short = 'v')]
     pub version: Option<String>
 }
@@ -172,14 +177,14 @@ pub struct AddCurseforgeArgs  {
     #[arg(required = true)]
     pub ids: Vec<String>,
 
-    /// The version id of the mod to add, ignores compatability checks
+    /// The version id of the project to add, ignores compatability checks
     #[arg(long, short = 'v')]
     pub version: Option<i32>
 }
 
 #[derive(clap::Args)]
 pub struct AddGithubArgs {
-    /// The repository to add mods from,
+    /// The repository to add projects from,
     /// github url or owner/repo accepted
     #[arg(required = true)]
     pub repo: String,
