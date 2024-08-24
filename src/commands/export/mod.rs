@@ -21,7 +21,7 @@ impl ProjectType {
             Self::Shader => options.shaders_output.unwrap_or("shaderpacks".into()),
             Self::Datapack => options.shaders_output.unwrap_or("datapacks".into()),
             Self::Resourcepack => options.resourcepacks_output.unwrap_or("resourcepacks".into()),
-            _ => "unknown".into()
+            _ => "mods".into()
         }
     }
 }
