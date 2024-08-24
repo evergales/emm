@@ -26,7 +26,8 @@ pub struct GithubRelease {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ReleaseAsset {
     pub browser_download_url: String,
-    pub name: String
+    pub name: String,
+    pub size: usize
 }
 
 pub struct GithubApi {

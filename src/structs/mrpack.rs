@@ -2,7 +2,9 @@ use std::{collections::HashMap, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::pack::ModLoader;
+use crate::api::modrinth::SideSupportType;
+
+use super::{index::Side, pack::ModLoader};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -36,17 +38,8 @@ pub struct FileHashes {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileEnv {
-    pub client: EnvSideType,
-    pub server: EnvSideType
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "kebab-case")]
-pub enum EnvSideType {
-    Required,
-    Optional,
-    Unsupported,
-    Unknown
+    pub client: SideSupportType,
+    pub server: SideSupportType
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -66,6 +59,21 @@ impl From<ModLoader> for PackDependency {
             ModLoader::Quilt => Self::QuiltLoader,
             ModLoader::Forge => Self::Forge,
             ModLoader::NeoForge => Self::NeoForge,
+        }
+    }
+}
+
+impl From<Side> for FileEnv {
+    fn from(value: Side) -> Self {
+        let (client, server) = match value {
+            Side::Both => (SideSupportType::Required, SideSupportType::Required),
+            Side::Client => (SideSupportType::Required, SideSupportType::Unsupported),
+            Side::Server => (SideSupportType::Unsupported, SideSupportType::Required),
+        };
+
+        Self {
+            client,
+            server
         }
     }
 }
