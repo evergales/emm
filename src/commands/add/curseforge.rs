@@ -35,7 +35,7 @@ pub async fn add_curseforge(args: AddCurseforgeArgs) -> Result<()> {
         };
     }
 
-    let search_res = progress.suspend(|| async { search_ids(&modpack, to_search.as_slice()).await }).await?;
+    let search_res = search_ids(&modpack, to_search.as_slice(), &progress).await?;
     addons.extend(search_res);
 
     progress.set_message("Finding dependencies");
@@ -118,7 +118,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<i32>) -> Re
     })
 }
 
-async fn search_ids(modpack: &Modpack, strings: &[&str]) -> Result<Vec<Addon>> {
+async fn search_ids(modpack: &Modpack, strings: &[&str], progress: &ProgressBar) -> Result<Vec<Addon>> {
     let mut results = Vec::new();
     
     for string in strings {
@@ -134,12 +134,14 @@ async fn search_ids(modpack: &Modpack, strings: &[&str]) -> Result<Vec<Addon>> {
         let chosen = if let Some(exact_match) = titles.iter().position(|t| t.to_lowercase() == string.to_lowercase()) {
             exact_match
         } else {
-            let selected = Select::new()
+            let selected = progress.suspend(|| {
+                Select::new()
                     .with_prompt(format!("search results for '{}'", string))
                     .items(&titles)
                     .report(false)
                     .interact_opt()
-                    .unwrap();
+                    .unwrap()
+            });
 
             match selected {
                 Some(usize) => usize,
