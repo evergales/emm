@@ -7,7 +7,7 @@ use tokio::{sync::Semaphore, task::JoinSet};
 use zip::{write::SimpleFileOptions, ZipWriter};
 
 use crate::{
-    api::modrinth::VersionFile, cli::ExportModrinthArgs, error::Result, structs::{
+    api::modrinth::VersionFile, cli::ExportModrinthArgs, error::{Error, Result}, structs::{
         index::{AddonSource, Index,  ProjectType, Side}, mrpack::{File, FileHashes, Game, Metadata, PackDependency}, pack::Modpack
     }, util::{files::{add_recursively, download_file}, modrinth::primary_file}, CURSEFORGE, GITHUB, MODRINTH
 };
@@ -15,6 +15,11 @@ use crate::{
 pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
     let modpack = Arc::new(Modpack::read()?);
     let index = Index::read().await?;
+
+    let overrides_path = args.overrides_path.or(modpack.options.overrides_path.clone());
+    if overrides_path.as_ref().is_some_and(|path| !path.exists()) {
+        return Err(Error::Other("The overrides path provided does not exist".into()));
+    }
 
     let progress = ProgressBar::new_spinner().with_message("Exporting to mrpack");
     progress.enable_steady_tick(Duration::from_millis(100));
@@ -154,7 +159,7 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
     }
 
     progress.set_message("Creating mrpack file");
-    create_mrpack(&env::current_dir()?, &metadata, args.overrides_path.as_ref(), mod_overrides).unwrap();
+    create_mrpack(&env::current_dir()?, &metadata, overrides_path.as_ref(), mod_overrides).unwrap();
     if cache_dir.is_dir() {
         fs::remove_dir_all(cache_dir)?;
     }
