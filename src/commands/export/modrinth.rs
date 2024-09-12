@@ -131,8 +131,6 @@ pub async fn export_modrinth(args: ExportModrinthArgs) -> Result<()> {
             (file_path, f.download_url.unwrap())
         }).collect();
         
-
-        progress.set_message("Downloading non-modrinth mods");
         let permits = Arc::new(Semaphore::new(10)); // limit file downloads to 10 at a time
         let mut tasks: JoinSet<Result<()>> = JoinSet::new();
         for file in to_download {
