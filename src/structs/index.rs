@@ -16,6 +16,7 @@ pub struct Addon {
     pub project_type: ProjectType,
     pub side: Side,
     pub source: AddonSource,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<AddonOptions>,
     #[serde(skip_serializing, default)]
     pub filename: Option<String>
@@ -34,9 +35,6 @@ pub enum AddonSource {
 pub struct AddonOptions {
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub pinned: bool,
-    pub mod_loader: Option<ModLoader>, // for mr & cf
-    pub game_versions: Option<String>, // for mr & cf
-    pub release_channel: Option<ReleaseChannel>
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
