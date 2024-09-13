@@ -6,7 +6,7 @@ use dialoguer::Select;
 use indicatif::ProgressBar;
 use tokio::{task::JoinSet, try_join};
 
-use crate::{api::curseforge::{File, FileDependency, FileRelationType}, cli::AddCurseforgeArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ProjectType, Side}, pack::Modpack}, CURSEFORGE};
+use crate::{api::curseforge::{File, FileDependency, FileRelationType}, cli::AddCurseforgeArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, CurseforgeSource, Index, ProjectType, Side}, pack::Modpack}, util::FilterVersions, CURSEFORGE};
 
 use super::{add_to_index, handle_checked};
 
@@ -95,12 +95,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<i32>) -> Re
 
     let project_type = ProjectType::try_from(cf_mod.class_id.unwrap()).map_err(|_| Error::UnsupportedProjectType(cf_mod.name.clone()))?;
 
-    let compatibles = files.into_iter().filter(|f| 
-        f.is_available
-        && if matches!(project_type, ProjectType::Mod) { f.game_versions.contains(&modpack.versions.loader.to_string()) } else { true }
-        && f.game_versions.contains(&modpack.versions.minecraft)
-    ).collect::<Vec<File>>();
-
+    let compatibles = files.filter_compatible(modpack, &project_type);
     if compatibles.is_empty() {
         return Err(Error::NoCompatibleVersions(cf_mod.name));
     }

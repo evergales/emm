@@ -6,7 +6,7 @@ use dialoguer::Select;
 use indicatif::ProgressBar;
 use tokio::{task::JoinSet, try_join};
 
-use crate::{api::modrinth::{DependencyType, SearchFacet, Version, VersionDependency}, cli::AddModrinthArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, Index, ModrinthSource, ProjectType}, pack::Modpack}, util::modrinth::get_side, MODRINTH};
+use crate::{api::modrinth::{DependencyType, SearchFacet, Version, VersionDependency}, cli::AddModrinthArgs, error::{Error, Result}, structs::{index::{Addon, AddonOptions, AddonSource, Index, ModrinthSource, ProjectType}, pack::Modpack}, util::{modrinth::get_side, FilterVersions}, MODRINTH};
 
 use super::{add_to_index, handle_checked};
 
@@ -89,12 +89,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<&str>) -> R
                 _ => ()
             }
 
-            let compatible_versions: Vec<Version> = versions.into_iter().filter(|v|
-                v.game_versions.contains(&modpack.versions.minecraft)
-                && if matches!(project.project_type, ProjectType::Mod) { v.loaders.contains(&modpack.versions.loader.to_string().to_lowercase()) } else { true }
-            ).collect();
-
-
+            let compatible_versions: Vec<Version> = versions.filter_compatible(modpack, &project.project_type);
             if compatible_versions.is_empty() {
                 return Err(Error::NoCompatibleVersions(project.title));
             }
