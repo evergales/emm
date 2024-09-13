@@ -45,11 +45,7 @@ pub async fn pin(args: PinArgs) -> Result<()> {
 async fn check_version(addon: &Addon, version: &str) -> Result<()> {
     let compatible = match &addon.source {
         AddonSource::Modrinth(source) => {
-            let version = MODRINTH.get_version(version).await;
-            match version {
-                Ok(version) => version.project_id == source.id,
-                Err(_) => false,
-            }
+            MODRINTH.get_version(version).await.is_ok_and(|version| version.project_id == source.id)
         },
         AddonSource::Curseforge(source) => {
             if let Ok(version) = version.parse::<i32>() {
