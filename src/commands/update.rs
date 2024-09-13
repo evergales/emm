@@ -7,7 +7,7 @@ use crate::{
     api::{curseforge::File, github::GithubRelease, modrinth::Version}, cli::UpdateArgs, error::Result, structs::{
         index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ProjectType},
         pack::Modpack,
-    }, util::{modrinth::get_primary_hash, to_hyperlink, FilterVersions}, CURSEFORGE, GITHUB, MODRINTH
+    }, util::{get_version_filters, modrinth::get_primary_hash, to_hyperlink, FilterVersions}, CURSEFORGE, GITHUB, MODRINTH
 };
 
 pub async fn update(args: UpdateArgs) -> Result<()> {
@@ -27,7 +27,7 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
 
     let mut mr_addon_versions = Vec::new();
     let mut cf_addon_ids = Vec::new();
-    let mut gh_addon_sources = Vec::new(); // (gh_repo, tag_filter, title_filter)
+    let mut gh_addon_sources = Vec::new();
 
     index.addons.iter().for_each(|a| match &a.source {
         AddonSource::Modrinth(source) => mr_addon_versions.push(source.version.as_str()),
@@ -110,7 +110,13 @@ async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Res
         .map(|v| get_primary_hash(v.files).expect("couldnt find hash"))
         .collect();
 
-    let loader_string = modpack.versions.loader.to_string().to_lowercase();
+    let (acceptable_versions, acceptable_loaders) = get_version_filters(modpack);
+    let acceptable_versions: Vec<&str> = acceptable_versions.iter().map(|v| v.as_str()).collect();
+    let loader_strings: Vec<String> = acceptable_loaders.into_iter().map(|l| l.to_string().to_lowercase()).collect();
+    
+    let mut acceptable_loader_strings: Vec<&str> = loader_strings.iter().map(AsRef::as_ref).collect();
+    // include these for: shader, datapack, resourcepack support
+    acceptable_loader_strings.extend(vec!["iris", "canvas", "optifine", "datapack", "minecraft"]);
 
     MODRINTH
         .latest_versions_from_hashes(
@@ -119,9 +125,9 @@ async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Res
                 .map(AsRef::as_ref)
                 .collect::<Vec<&str>>()
                 .as_slice(),
-            // include these for: shader, datapack, resourcepack support
-            Some(&[loader_string.as_str(), "iris", "canvas", "optifine", "datapack", "minecraft"]),
-            Some(&[&*modpack.versions.minecraft]),
+            
+            Some(acceptable_loader_strings.as_slice()),
+            Some(acceptable_versions.as_slice()),
         )
         .await
 }
