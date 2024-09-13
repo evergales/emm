@@ -32,13 +32,20 @@ pub async fn init(args: InitArgs) -> Result<()> {
         None => pick_loader().await?,
     };
 
+    let mut options = PackOptions::default();
+    if loader == ModLoader::Quilt {
+        // quilt is compatible with most fabric mods, so this should be default
+        // putting this in acceptable_loaders instead of somewhere in compat checks makes it disableable
+        options.acceptable_loaders = Some(vec![ModLoader::Fabric]);
+    }
+
     Modpack::write(&Modpack {
         name,
         version: "0.1.0".into(),
         authors: args.authors.unwrap_or_default(),
         description: args.description,
         index_path: "./index".into(),
-        options: PackOptions::default(),
+        options,
         versions: Versions {
             minecraft: game_version,
             loader,
