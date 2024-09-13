@@ -6,7 +6,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     error::{Error, Result},
-    structs::index::ProjectType,
+    structs::{index::ProjectType, pack::Modpack},
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

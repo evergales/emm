@@ -5,9 +5,9 @@ use tokio::{task::JoinSet, try_join};
 
 use crate::{
     api::{curseforge::File, github::GithubRelease, modrinth::Version}, cli::UpdateArgs, error::Result, structs::{
-        index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource},
+        index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ProjectType},
         pack::Modpack,
-    }, util::{modrinth::get_primary_hash, to_hyperlink}, CURSEFORGE, GITHUB, MODRINTH
+    }, util::{modrinth::get_primary_hash, to_hyperlink, FilterVersions}, CURSEFORGE, GITHUB, MODRINTH
 };
 
 pub async fn update(args: UpdateArgs) -> Result<()> {
@@ -135,12 +135,7 @@ async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<i32>) -> Result<
         let task = async move {
             let files = CURSEFORGE.get_mod_files(&id).await?;
 
-            let compatibles = files.into_iter().filter(|f| 
-                    f.is_available
-                    && f.game_versions.contains(&modpack.versions.loader.to_string())
-                    && f.game_versions.contains(&modpack.versions.minecraft)
-                ).collect::<Vec<File>>();
-    
+            let compatibles = files.filter_compatible(&modpack, &ProjectType::Unknown); // should be fine to ignore project types here
             Ok(compatibles.first().map(|c| c.to_owned()))
         };
 

@@ -19,6 +19,7 @@ pub struct Modpack {
 #[serde(default)]
 pub struct PackOptions {
     pub acceptable_versions: Option<Vec<String>>,
+    pub acceptable_loaders: Option<Vec<ModLoader>>,
     pub overrides_path: Option<PathBuf>,
     pub mods_output: Option<PathBuf>,
     pub resourcepacks_output: Option<PathBuf>,

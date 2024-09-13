@@ -115,14 +115,7 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
     let incompatible_count = to_migrate.iter().filter(|(_, _, c)| matches!(c, Compatibility::Incompatible)).count();
     let unknown_count = to_migrate.iter().filter(|(_, _, c)| matches!(c, Compatibility::Unknown)).count();
 
-    let mut out = format!("{}
-{compatible_count} {compatible} | {partial_count} {partial} | {incompatible_count} {incompatible} | {unknown_count} {unknown}\n\n",
-        style(format!("Migrateable mods: {}/{}", to_migrate.len() - incompatible_count, to_migrate.len())).bold(),
-        compatible = style("compatible").green(),
-        partial = style("partial").color256(166),
-        incompatible = style("incompatible").red(),
-        unknown = style("unknown").blue()
-    );
+    let mut out = String::new();
 
     for (addon, version, compatability) in &to_migrate {
         writeln!(&mut out, "{name} {version}",
@@ -135,6 +128,15 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
             version = style(format!("({})", version.as_ref().unwrap_or(&"?".into()))).dim()
         ).unwrap()
     };
+
+    writeln!(&mut out, "\n{}
+{compatible_count} {compatible} | {partial_count} {partial} | {incompatible_count} {incompatible} | {unknown_count} {unknown}",
+        style(format!("Migrateable mods: {}/{}", to_migrate.len() - incompatible_count, to_migrate.len())).bold(),
+        compatible = style("compatible").green(),
+        partial = style("partial").color256(166),
+        incompatible = style("incompatible").red(),
+        unknown = style("unknown").blue()
+    ).unwrap();
 
     print!("{}", out);
 
@@ -172,7 +174,7 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
         source: match addon.source {
             AddonSource::Modrinth(source) => AddonSource::Modrinth(ModrinthSource { version, ..source }),
             AddonSource::Curseforge(source) => AddonSource::Curseforge(CurseforgeSource { version: version.parse::<i32>().unwrap(), ..source }),
-            AddonSource::Github(source) => AddonSource::Github(GithubSource { tag: version, ..source }), // technically gh here is unreachable
+            AddonSource::Github(source) => AddonSource::Github(GithubSource { tag: version, ..source }),
         },
         ..addon
     })).collect();
