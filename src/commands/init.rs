@@ -4,7 +4,7 @@ use dialoguer::{Input, Select};
 use crate::{cli::InitArgs, error::Result, structs::pack::{ModLoader, Modpack, PackOptions, Versions}, util::versions::{get_latest_loader_version, minecraft::{get_latest_release, get_latest_snapshot, list_mc_versions, VersionType}}};
 
 pub async fn init(args: InitArgs) -> Result<()> {
-    if Modpack::path().is_file() {
+    if !args.reinit && Modpack::path().is_file() {
         println!("{} \nrun `emm help` for help", style("This folder already has a modpack!").color256(166));
         return Ok(());
     }

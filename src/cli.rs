@@ -82,7 +82,11 @@ pub struct InitArgs {
 
     /// Show snapshots in version select
     #[arg(long, short = 's', visible_alias = "snapshots")]
-    pub show_snapshots: bool
+    pub show_snapshots: bool,
+
+    /// Reinitialize the modpack
+    #[arg(long, short = 'r')]
+    pub reinit: bool
 }
 
 #[derive(clap::Args)]
