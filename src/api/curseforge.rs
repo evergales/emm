@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use murmur2::murmur2;
 use reqwest::{
     header::{HeaderMap, HeaderValue},
@@ -47,6 +48,7 @@ pub struct File {
     pub is_available: bool,
     pub file_name: String,
     pub hashes: Vec<FileHash>,
+    pub file_date: DateTime<Utc>,
     pub download_url: Option<String>,
     pub game_versions: Vec<String>,
     pub dependencies: Vec<FileDependency>,

@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{api::modrinth::{SideSupportType, Version, VersionFile}, error::{Error, Result}, structs::{index::{ProjectType, Side}, pack::Modpack}};
 
 use super::{get_version_filters, FilterVersions};
@@ -31,7 +33,7 @@ fn should_use_side(support_type: &SideSupportType) -> bool {
     matches!(support_type, SideSupportType::Required | SideSupportType::Optional)
 }
 
-impl FilterVersions for Vec<Version> {
+impl FilterVersions<Version> for Vec<Version> {
     fn filter_compatible(self, modpack: &Modpack, project_type: &ProjectType) -> Self {
         let (acceptable_versions, acceptable_loaders) = get_version_filters(modpack);
 
@@ -41,5 +43,42 @@ impl FilterVersions for Vec<Version> {
                 acceptable_loaders.iter().any(|al| version.loaders.contains(&al.to_string().to_lowercase()))
             } else { true }
         ).collect()
+    }
+
+    // should be used on versions that are known to be compatible
+    // order: matches game version => more recent => matches primary loader
+    fn best_match(mut self, modpack: &Modpack) -> Option<Version> {
+        self.sort_by(|a, b| {
+            // prefer versions that match the primary game version of the modpack
+            let a_has_preferred_version = a.game_versions.contains(&modpack.versions.minecraft);
+            let b_has_preferred_version = b.game_versions.contains(&modpack.versions.minecraft);
+
+            match (a_has_preferred_version, b_has_preferred_version) {
+                (true, false) => Ordering::Less,
+                (false, true) => Ordering::Greater,
+                _ => {
+                    // if both match the primary game version
+                    // prefer more recent versions
+                    match b.date_published.cmp(&a.date_published) {
+                        Ordering::Less => Ordering::Less,
+                        Ordering::Greater => Ordering::Greater,
+                        Ordering::Equal => {
+                            // if both were uploaded at the same time
+                            // prefer versions that match the primary mod loader of the modpack
+                            let a_has_preferred_loader = a.loaders.contains(&modpack.versions.loader.to_string().to_lowercase());
+                            let b_has_preferred_loader = b.loaders.contains(&modpack.versions.loader.to_string().to_lowercase());
+                            
+                            match (a_has_preferred_loader, b_has_preferred_loader) {
+                                (true, false) => Ordering::Less,
+                                (false, true) => Ordering::Greater,
+                                _ => Ordering::Equal
+                            }
+                        },
+                    }
+                }
+            }
+        });
+
+        self.first().cloned()
     }
 }

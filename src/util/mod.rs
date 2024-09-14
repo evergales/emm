@@ -19,8 +19,9 @@ pub fn to_hyperlink(link: &str, placeholder: &str) -> String {
     }
 }
 
-pub trait FilterVersions {
+pub trait FilterVersions<T> {
     fn filter_compatible(self, modpack: &Modpack, project_type: &ProjectType) -> Self;
+    fn best_match(self, modpack: &Modpack) -> Option<T>;
 }
 
 pub fn get_version_filters(modpack: &Modpack) -> (Vec<&String>, Vec<&ModLoader>) {
