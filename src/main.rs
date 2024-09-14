@@ -1,6 +1,6 @@
 use std::env;
 use api::{curseforge::CurseAPI, github::GithubApi, modrinth::ModrinthAPI};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use cli::{Args, Commands};
 use lazy_static::lazy_static;
 
@@ -34,10 +34,16 @@ async fn main() {
         Commands::Unpin(args) => commands::unpin::unpin(args).await,
         Commands::List(args) => commands::list::list(args).await,
         Commands::Migrate(args) => commands::migrate::migrate(args).await,
-        /*
-        Commands::Completion { shell } => todo!(),
-        */
-        _ => unimplemented!()
+        Commands::Completion { shell } => {
+            clap_complete::generate(
+                shell,
+                &mut Args::command(),
+                option_env!("CARGO_BIN_NAME").unwrap_or("emm"),
+                &mut std::io::stdout()
+            );
+            
+            Ok(())
+        }
     } {
         eprintln!("{err}")
     }
