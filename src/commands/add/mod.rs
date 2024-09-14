@@ -16,9 +16,8 @@ pub async fn add(args: AddArgs) -> Result<()> {
     }
 }
 
-pub async fn add_to_index(addons: Vec<Addon>) -> Result<()> {
+pub async fn add_to_index(addons: Vec<Addon>, index: &Index) -> Result<()> {
     if addons.is_empty() { return Ok(()); }
-    let index = Index::read().await?;
     let mut to_add = Vec::new();
 
     let mut out = format!("Adding{}", if addons.len() > 1 {":\n"} else {" "});

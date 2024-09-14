@@ -40,10 +40,10 @@ pub async fn add_modrinth(args: AddModrinthArgs) -> Result<()> {
 
     progress.set_message("Finding dependencies");
 
-    let index_addons = Index::read().await?.addons;
+    let index = Index::read().await?;
     let checked_ids = Arc::new(Mutex::new(
         // use index & added mods for checked ids as default
-        index_addons.iter().map(|m| m.generic_id())
+        index.addons.iter().map(|m| m.generic_id())
             .chain(addons.iter().map(|m| m.generic_id()))
             .collect()
     ));
@@ -64,7 +64,7 @@ pub async fn add_modrinth(args: AddModrinthArgs) -> Result<()> {
     while let Some(res) = tasks.join_next().await { addons.extend(res??) }
 
     progress.finish_and_clear();
-    add_to_index(addons).await?;
+    add_to_index(addons, &index).await?;
     Ok(())
 }
 
