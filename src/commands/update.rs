@@ -26,12 +26,12 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     }
 
     let mut mr_addon_versions = Vec::new();
-    let mut cf_addon_ids = Vec::new();
+    let mut cf_addon_sources = Vec::new();
     let mut gh_addon_sources = Vec::new();
 
     index.addons.iter().for_each(|a| match &a.source {
         AddonSource::Modrinth(source) => mr_addon_versions.push(source.version.as_str()),
-        AddonSource::Curseforge(source) => cf_addon_ids.push(source.id),
+        AddonSource::Curseforge(source) => cf_addon_sources.push((source.id, a.project_type.clone())),
         AddonSource::Github(source) => gh_addon_sources.push(source.repo.clone())
     });
 
@@ -41,7 +41,7 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         latest_gh_versions
     ) = try_join!(
         update_modrinth(&modpack, mr_addon_versions),
-        update_curseforge(&modpack, cf_addon_ids),
+        update_curseforge(&modpack, cf_addon_sources),
         update_github(gh_addon_sources)
     )?;
 
@@ -132,17 +132,17 @@ async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Res
         .await
 }
 
-async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<i32>) -> Result<(Vec<File>, Vec<(i32, String)>)> {
+async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<(i32, ProjectType)>) -> Result<(Vec<File>, Vec<(i32, String)>)> {
     if cf_addon_ids.is_empty() { return Ok(Default::default()); }
     let mut tasks: JoinSet<Result<Option<File>>> = JoinSet::new();
-    for id in cf_addon_ids.clone() {
+    for (id, project_type) in cf_addon_ids.clone() {
         let modpack = modpack.clone();
 
         let task = async move {
             let files = CURSEFORGE.get_mod_files(&id).await?;
 
-            let compatibles = files.filter_compatible(&modpack, &ProjectType::Unknown); // should be fine to ignore project types here
-            Ok(compatibles.first().map(|c| c.to_owned()))
+            let compatibles = files.filter_compatible(&modpack, &project_type);
+            Ok(compatibles.best_match(&modpack))
         };
 
         tasks.spawn(task);
@@ -157,7 +157,12 @@ async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<i32>) -> Result<
     }
 
     // (mod_id, website_url) for displaying links later
-    let cf_links: Vec<(i32, String)> = CURSEFORGE.get_mods(cf_addon_ids).await.unwrap_or_default().into_iter().map(|a| (a.id, a.links.website_url)).collect();
+    let cf_links: Vec<(i32, String)> = CURSEFORGE.get_mods(cf_addon_ids.iter().map(|a| a.0).collect())
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|a| (a.id, a.links.website_url))
+        .collect();
 
     Ok((latest_cf_versions, cf_links))
 }
