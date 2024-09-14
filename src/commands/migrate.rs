@@ -38,31 +38,37 @@ pub async fn migrate(args: MigrateArgs) -> Result<()> {
     let mut to_migrate: Vec<AddonCompat> = Vec::new();
     let mut tasks: JoinSet<Result<AddonCompat>> = JoinSet::new();
 
-    let mr_projects = MODRINTH.get_multiple_projects_versions(&mr_addons.iter().map(|a| a.1.as_ref()).collect::<Vec<&str>>()).await?;
-    for (project, versions) in mr_projects {
-        let (compatibility, version) = 'compat: {
-            if !versions.iter().any(|v| match project.project_type {
-                ProjectType::Mod => v.loaders.contains(&modpack.versions.loader.to_string().to_lowercase()),
-                _ => true // ignore loader checks if not a mod
-            }) {
-                break 'compat (Compatibility::Incompatible, None);
-            }
-            
-            if let Some(version) = versions.iter().find(|v| v.game_versions.contains(&new_version)) {
-                break 'compat (Compatibility::Compatible, Some(version.id.clone()));
-            }
-
-            if let Some(acceptable_versions) = &modpack.options.acceptable_versions {
-                if let Some(version) = versions.iter().find(|v| v.game_versions.iter().any(|v| acceptable_versions.contains(v))) {
-                    break 'compat (Compatibility::Partial, Some(version.id.clone()));
+    for addon in mr_addons {
+        let modpack = modpack.clone();
+        let new_version = new_version.clone();
+        let task = async move {
+            let versions = MODRINTH.get_project_versions(&addon.1).await?;
+    
+            let (compatibility, version) = 'compat: {
+                if !versions.iter().any(|v| match addon.0.project_type {
+                    ProjectType::Mod => v.loaders.contains(&modpack.versions.loader.to_string().to_lowercase()),
+                    _ => true // ignore loader checks if not a mod
+                }) {
+                    break 'compat (Compatibility::Incompatible, None);
                 }
-            }
+                
+                if let Some(version) = versions.iter().find(|v| v.game_versions.contains(&new_version)) {
+                    break 'compat (Compatibility::Compatible, Some(version.id.clone()));
+                }
+    
+                if let Some(acceptable_versions) = &modpack.options.acceptable_versions {
+                    if let Some(version) = versions.iter().find(|v| v.game_versions.iter().any(|v| acceptable_versions.contains(v))) {
+                        break 'compat (Compatibility::Partial, Some(version.id.clone()));
+                    }
+                }
+    
+                (Compatibility::Incompatible, None)
+            };
 
-            (Compatibility::Incompatible, None)
+            Ok((addon.0, version, compatibility))
         };
 
-        let addon_idx = mr_addons.iter().position(|a| a.0.generic_id() == project.id).unwrap();
-        to_migrate.push((mr_addons[addon_idx].0.clone(), version, compatibility));
+        tasks.spawn(task);
     };
     
     for addon in cf_addons {
