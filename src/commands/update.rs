@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Write, sync::Arc};
+use std::{fmt::Write, sync::Arc};
 
 use console::style;
 use tokio::{task::JoinSet, try_join};
@@ -7,7 +7,7 @@ use crate::{
     api::{curseforge::File, github::GithubRelease, modrinth::Version}, cli::UpdateArgs, error::Result, structs::{
         index::{Addon, AddonSource, CurseforgeSource, GithubSource, Index, ModrinthSource, ProjectType},
         pack::Modpack,
-    }, util::{get_version_filters, modrinth::get_primary_hash, to_hyperlink, FilterVersions}, CURSEFORGE, GITHUB, MODRINTH
+    }, util::{to_hyperlink, FilterVersions}, CURSEFORGE, GITHUB, MODRINTH
 };
 
 pub async fn update(args: UpdateArgs) -> Result<()> {
@@ -25,12 +25,12 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         index.addons.retain(|a| !a.options.as_ref().is_some_and(|a| a.pinned));
     }
 
-    let mut mr_addon_versions = Vec::new();
+    let mut mr_addon_sources = Vec::new();
     let mut cf_addon_sources = Vec::new();
     let mut gh_addon_sources = Vec::new();
 
     index.addons.iter().for_each(|a| match &a.source {
-        AddonSource::Modrinth(source) => mr_addon_versions.push(source.version.as_str()),
+        AddonSource::Modrinth(source) => mr_addon_sources.push(source.id.as_str()),
         AddonSource::Curseforge(source) => cf_addon_sources.push((source.id, a.project_type.clone())),
         AddonSource::Github(source) => gh_addon_sources.push(source.repo.clone())
     });
@@ -40,7 +40,7 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
         (latest_cf_versions, cf_links),
         latest_gh_versions
     ) = try_join!(
-        update_modrinth(&modpack, mr_addon_versions),
+        update_modrinth(&modpack, mr_addon_sources),
         update_curseforge(&modpack, cf_addon_sources),
         update_github(gh_addon_sources)
     )?;
@@ -50,7 +50,7 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     let to_update: Vec<(Addon, String)> = index.addons.into_iter().filter_map(|addon| {
         match &addon.source {
             AddonSource::Modrinth(source) => {
-                let latest_version = latest_mr_versions.values().find(|v| v.project_id == source.id).unwrap();
+                let latest_version = &latest_mr_versions.iter().find(|v| v.0 == source.id).unwrap().1;
                 if latest_version.id != source.version {
                     return Some((
                         Addon { source: AddonSource::Modrinth(ModrinthSource { id: source.id.clone(), version: latest_version.id.clone() }), ..addon },
@@ -101,35 +101,14 @@ pub async fn update(args: UpdateArgs) -> Result<()> {
     Ok(())
 }
 
-async fn update_modrinth(modpack: &Modpack, mr_addon_versions: Vec<&str>) -> Result<HashMap<String, Version>> {
-    if mr_addon_versions.is_empty() { return Ok(Default::default()); }
-    let mr_version_hashes: Vec<String> = MODRINTH
-        .get_versions(mr_addon_versions.as_slice())
-        .await?
-        .into_iter()
-        .map(|v| get_primary_hash(v.files).expect("couldnt find hash"))
-        .collect();
+async fn update_modrinth(modpack: &Modpack, mr_addon_ids: Vec<&str>) -> Result<Vec<(String, Version)>> {
+    let mr_projects = MODRINTH.get_multiple_projects_versions(&mr_addon_ids).await?;
+    let project_version_pairs = mr_projects.into_iter().map(|(project, versions)| {
+        let compatible_versions = versions.filter_compatible(modpack, &project.project_type);
+        (project.id, compatible_versions.best_match(modpack).unwrap())
+    }).collect();
 
-    let (acceptable_versions, acceptable_loaders) = get_version_filters(modpack);
-    let acceptable_versions: Vec<&str> = acceptable_versions.iter().map(|v| v.as_str()).collect();
-    let loader_strings: Vec<String> = acceptable_loaders.into_iter().map(|l| l.to_string().to_lowercase()).collect();
-    
-    let mut acceptable_loader_strings: Vec<&str> = loader_strings.iter().map(AsRef::as_ref).collect();
-    // include these for: shader, datapack, resourcepack support
-    acceptable_loader_strings.extend(vec!["iris", "canvas", "optifine", "datapack", "minecraft"]);
-
-    MODRINTH
-        .latest_versions_from_hashes(
-            mr_version_hashes
-                .iter()
-                .map(AsRef::as_ref)
-                .collect::<Vec<&str>>()
-                .as_slice(),
-            
-            Some(acceptable_loader_strings.as_slice()),
-            Some(acceptable_versions.as_slice()),
-        )
-        .await
+    Ok(project_version_pairs)
 }
 
 async fn update_curseforge(modpack: &Modpack, cf_addon_ids: Vec<(i32, ProjectType)>) -> Result<(Vec<File>, Vec<(i32, String)>)> {
