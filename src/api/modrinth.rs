@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use lazy_regex::regex_is_match;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -43,6 +44,7 @@ pub struct Version {
     pub loaders: Vec<String>,
     pub id: String,
     pub project_id: String,
+    pub date_published: DateTime<Utc>,
     pub files: Vec<VersionFile>,
 }
 

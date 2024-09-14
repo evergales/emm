@@ -106,7 +106,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<i32>) -> Re
         side: Side::Both,
         source: AddonSource::Curseforge(CurseforgeSource {
             id: cf_mod.id,
-            version: compatibles.first().unwrap().id,
+            version: compatibles.best_match(modpack).unwrap().id,
         }),
         options: Some(AddonOptions::default()),
         filename: Some(format!("{}.toml", cf_mod.slug))

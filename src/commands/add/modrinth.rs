@@ -94,7 +94,7 @@ async fn resolve_mod(modpack: &Modpack, id: &str, version_id: Option<&str>) -> R
                 return Err(Error::NoCompatibleVersions(project.title));
             }
 
-            (project, compatible_versions.first().unwrap().to_owned())
+            (project, compatible_versions.best_match(modpack).unwrap())
         },
     };
 
