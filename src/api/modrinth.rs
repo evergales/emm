@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 use lazy_regex::regex_is_match;
@@ -19,8 +19,7 @@ pub struct Project {
     pub server_side: SideSupportType,
     pub project_type: ProjectType,
     pub id: String,
-    pub license: Option<ProjectLicense>,
-    pub versions: Vec<String>
+    pub license: Option<ProjectLicense>
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -178,25 +177,6 @@ impl ModrinthAPI {
     pub async fn get_project_versions(&self, id: &str) -> Result<Vec<Version>> {
         check_id(id)?;
         self.get(&format!("{API_URL}/project/{id}/version")).await
-    }
-
-    pub async fn get_multiple_projects_versions(&self, ids: &[&str]) -> Result<Vec<(Project, Vec<Version>)>> {
-        let projects = self.get_multiple_projects(ids).await?;
-        let all_version_ids: Vec<&str> = projects.iter().flat_map(|p| p.versions.iter().map(AsRef::as_ref)).collect();
-        let all_versions = Rc::new(self.get_versions(&all_version_ids).await?);
-
-        // the amount of cloning here hurts me but im dumb T-T
-        Ok(projects
-            .into_iter()
-            .map(|p| {
-                let proj_versions = all_versions
-                    .iter()
-                    .filter(|v| v.project_id == p.id)
-                    .cloned()
-                    .collect();
-                (p.clone(), proj_versions)
-            })
-            .collect())
     }
 
     pub async fn get_version(&self, id: &str) -> Result<Version> {
